@@ -29,7 +29,7 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-                        <h1 class="text-xl font-bold text-blue-600">منشئ رحلات بلقيس</h1>
+                        <h1 class="text-xl font-bold text-blue-600">بلقيس للسياحة</h1>
                     </div>
                     <div class="flex items-center">
                         <a href="/admin" class="text-sm text-gray-500 hover:text-gray-700">لوحة التحكم</a>

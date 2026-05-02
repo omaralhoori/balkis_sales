@@ -36,8 +36,8 @@ class ItineraryGenerator extends Component
 
     public function mount()
     {
-        $this->arrivingDate = Carbon::now()->format('Y-m-d');
-        $this->leavingDate = Carbon::now()->addDays(3)->format('Y-m-d');
+        $this->arrivingDate = Carbon::now()->format('d-m-Y');
+        $this->leavingDate = Carbon::now()->addDays(3)->format('d-m-Y');
         $this->calculateDays();
     }
 
@@ -47,31 +47,40 @@ class ItineraryGenerator extends Component
     public function calculateDays()
     {
         if ($this->arrivingDate && $this->leavingDate) {
-            $start = Carbon::parse($this->arrivingDate);
-            $end = Carbon::parse($this->leavingDate);
-            if ($end->greaterThan($start)) {
-                $this->totalNights = $start->diffInDays($end);
-                $this->totalDays = $this->totalNights + 1;
-            } else {
-                $this->totalNights = 0;
-                $this->totalDays = 1;
+            try {
+                $start = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->startOfDay();
+                $end = Carbon::createFromFormat('d-m-Y', $this->leavingDate)->startOfDay();
+                if ($end->greaterThan($start)) {
+                    $this->totalNights = $start->diffInDays($end);
+                    $this->totalDays = $this->totalNights + 1;
+                } else {
+                    $this->totalNights = 0;
+                    $this->totalDays = 1;
+                }
+                $this->initDailyTours();
+            } catch (\Exception $e) {
+                // Ignore parsing errors temporarily if user is typing
             }
-            $this->initDailyTours();
         }
     }
 
     public function initDailyTours()
     {
         $newDailyTours = [];
-        for ($i = 1; $i <= $this->totalDays; $i++) {
-            $newDailyTours[$i] = [
-                'tour_id' => $this->dailyTours[$i]['tour_id'] ?? '',
-                'buying_price' => $this->dailyTours[$i]['buying_price'] ?? 0,
-                'selling_price' => $this->dailyTours[$i]['selling_price'] ?? 0,
-                'date' => Carbon::parse($this->arrivingDate)->addDays($i - 1)->format('d-m-Y'),
-            ];
+        try {
+            $start = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->startOfDay();
+            for ($i = 1; $i <= $this->totalDays; $i++) {
+                $newDailyTours[$i] = [
+                    'tour_id' => $this->dailyTours[$i]['tour_id'] ?? '',
+                    'buying_price' => $this->dailyTours[$i]['buying_price'] ?? 0,
+                    'selling_price' => $this->dailyTours[$i]['selling_price'] ?? 0,
+                    'date' => $start->copy()->addDays($i - 1)->format('d-m-Y'),
+                ];
+            }
+            $this->dailyTours = $newDailyTours;
+        } catch (\Exception $e) {
+            // Ignore if date format is invalid
         }
-        $this->dailyTours = $newDailyTours;
     }
 
     public function addChild()
@@ -142,8 +151,8 @@ class ItineraryGenerator extends Component
                 'customerName' => 'required',
                 'adultsCount' => 'required|numeric|min:1',
                 'childrenAges.*' => 'required|numeric|min:0|max:17',
-                'arrivingDate' => 'required|date',
-                'leavingDate' => 'required|date|after:arrivingDate',
+                'arrivingDate' => 'required',
+                'leavingDate' => 'required',
             ]);
             if (empty($this->selectedAccommodations)) {
                 $this->addAccommodation();

@@ -167,6 +167,9 @@
                             @if(!empty($tour->short_description))
                                 <br><span style="color:#666; font-size:12px;">{{ $tour->short_description }}</span>
                             @endif
+                            @if(!empty($tour->external_link))
+                                <br><a href="{{ $tour->external_link }}" style="color:#2563eb; font-size:12px; text-decoration:underline;">مزيد من التفاصيل</a>
+                            @endif
                         @else
                             <span style="color: #999;">يوم حر / لم يتم تحديد جولة</span>
                         @endif

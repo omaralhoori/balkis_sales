@@ -71,13 +71,37 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ الوصول</label>
-                    <input type="text" x-data x-init="flatpickr($el, {dateFormat: 'd-m-Y'})" wire:model.live="arrivingDate" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" dir="ltr" placeholder="DD-MM-YYYY">
+                    <div wire:ignore>
+                        <input type="text" 
+                               x-data="{ value: @entangle('arrivingDate').live }" 
+                               x-init="flatpickr($el, {
+                                   dateFormat: 'd-m-Y', 
+                                   allowInput: true,
+                                   defaultDate: value,
+                                   onChange: function(selectedDates, dateStr) { value = dateStr; }
+                               })" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
+                               dir="ltr" 
+                               placeholder="DD-MM-YYYY">
+                    </div>
                     @error('arrivingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ المغادرة</label>
-                    <input type="text" x-data x-init="flatpickr($el, {dateFormat: 'd-m-Y'})" wire:model.live="leavingDate" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" dir="ltr" placeholder="DD-MM-YYYY">
+                    <div wire:ignore>
+                        <input type="text" 
+                               x-data="{ value: @entangle('leavingDate').live }" 
+                               x-init="flatpickr($el, {
+                                   dateFormat: 'd-m-Y', 
+                                   allowInput: true,
+                                   defaultDate: value,
+                                   onChange: function(selectedDates, dateStr) { value = dateStr; }
+                               })" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
+                               dir="ltr" 
+                               placeholder="DD-MM-YYYY">
+                    </div>
                     @error('leavingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
             </div>
