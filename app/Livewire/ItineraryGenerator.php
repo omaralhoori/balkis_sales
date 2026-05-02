@@ -169,7 +169,7 @@ class ItineraryGenerator extends Component
             }
         }
         
-        if ($this->currentStep < 5) {
+        if ($this->currentStep < 4) {
             $this->currentStep++;
         }
     }
@@ -189,9 +189,10 @@ class ItineraryGenerator extends Component
         }
         if ($this->includeRentalCar) {
             $total += ((float)$this->carBuyingPrice * $this->totalDays);
-        }
-        foreach ($this->dailyTours as $day) {
-            $total += (float)($day['buying_price'] ?? 0);
+        } else {
+            foreach ($this->dailyTours as $day) {
+                $total += (float)($day['buying_price'] ?? 0);
+            }
         }
         return $total;
     }

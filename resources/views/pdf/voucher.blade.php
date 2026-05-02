@@ -152,7 +152,18 @@
     </div>
     @endif
 
-    @if(!empty($dailyTours))
+    @php
+        $hasTours = false;
+        if (!$includeRentalCar) {
+            foreach($dailyTours as $day) {
+                if (!empty($day['tour_id'])) {
+                    $hasTours = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+    @if($hasTours)
     <div class="section">
         <div class="section-title">البرنامج السياحي اليومي</div>
         <table>

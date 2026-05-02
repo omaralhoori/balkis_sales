@@ -4,9 +4,9 @@
     <div class="mb-8">
         <div class="flex items-center justify-between relative">
             <div class="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 rounded-full z-0"></div>
-            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 rounded-full z-0 transition-all duration-500" style="width: {{ (($currentStep - 1) / 4) * 100 }}%"></div>
+            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 rounded-full z-0 transition-all duration-500" style="width: {{ (($currentStep - 1) / 3) * 100 }}%"></div>
             
-            @foreach(['البيانات', 'السكن', 'السيارة', 'الجدول', 'المراجعة'] as $index => $label)
+            @foreach(['البيانات', 'السكن', 'السيارة أو الجدول', 'المراجعة'] as $index => $label)
             <div class="relative z-10 flex flex-col items-center">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm {{ $currentStep > $index ? 'bg-blue-600 text-white' : ($currentStep == $index + 1 ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-200 text-gray-500') }} transition-all duration-300">
                     {{ $index + 1 }}
@@ -175,19 +175,19 @@
         </div>
         @endif
 
-        <!-- Step 3: Car -->
+        <!-- Step 3: Car or Daily Itinerary -->
         @if($currentStep == 3)
         <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">استئجار سيارة</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">السيارة والبرنامج السياحي</h2>
             
-            <label class="flex items-center cursor-pointer mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <label class="flex items-center cursor-pointer mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">
                 <div class="relative">
                     <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only">
                     <div class="block bg-gray-300 w-14 h-8 rounded-full transition-colors {{ $includeRentalCar ? 'bg-blue-500' : '' }}"></div>
                     <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ $includeRentalCar ? 'translate-x-6' : '' }}"></div>
                 </div>
                 <div class="mr-4 text-gray-700 font-medium">
-                    تضمين سيارة سياحية في البرنامج؟
+                    العميل يريد سيارة سياحية بدون سائق؟ (إذا تم التحديد، سيلغى اختيار الرحلات اليومية)
                 </div>
             </label>
 
@@ -212,16 +212,9 @@
                     * سيتم حساب تكلفة السيارة لعدد <strong>{{ $totalDays }} أيام</strong> الإجمالية.
                 </div>
             </div>
-            @endif
-        </div>
-        @endif
-
-        <!-- Step 4: Daily Itinerary -->
-        @if($currentStep == 4)
-        <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">البرنامج السياحي اليومي</h2>
-            
-            <div class="space-y-4">
+            @else
+            <div class="space-y-4 animate-[fadeIn_0.3s_ease-out] mt-6 border-t pt-6 border-gray-100">
+                <h3 class="text-lg font-bold text-gray-700 mb-4">البرنامج السياحي اليومي (مع سائق / جروب)</h3>
                 @for($i = 1; $i <= $totalDays; $i++)
                 <div class="bg-white border {{ isset($dailyTours[$i]['tour_id']) && $dailyTours[$i]['tour_id'] ? 'border-green-300 shadow-sm' : 'border-gray-200' }} p-4 rounded-xl">
                     <div class="flex flex-col md:flex-row md:items-center gap-4">
@@ -249,11 +242,12 @@
                 </div>
                 @endfor
             </div>
+            @endif
         </div>
         @endif
 
-        <!-- Step 5: Review & Submit -->
-        @if($currentStep == 5)
+        <!-- Step 4: Review & Submit -->
+        @if($currentStep == 4)
         <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-4">
@@ -288,10 +282,10 @@
                             $carTotal = $carBuyingPrice * $totalDays;
                         @endphp
                         <div class="flex justify-between text-sm text-gray-500 border-t pt-3 border-gray-200">
-                            <span>سيارة: {{ $carModel->car_type ?? '' }} ({{ $totalDays }} أيام)</span>
+                            <span>سيارة بدون سائق: {{ $carModel->car_type ?? '' }} ({{ $totalDays }} أيام)</span>
                             <span>${{ number_format($carTotal, 2) }}</span>
                         </div>
-                    @endif
+                    @else
 
                     @php $toursTotal = 0; @endphp
                     @foreach($dailyTours as $day)
@@ -305,6 +299,7 @@
                             <span>جولات سياحية (إجمالي)</span>
                             <span>${{ number_format($toursTotal, 2) }}</span>
                         </div>
+                    @endif
                     @endif
                 </div>
 
@@ -345,7 +340,7 @@
                 <div></div>
             @endif
 
-            @if($currentStep < 5)
+            @if($currentStep < 4)
                 <button wire:click="nextStep" class="bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md shadow-blue-200 transition-all flex items-center">
                     التالي
                     <svg class="w-5 h-5 mr-1 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
