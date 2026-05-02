@@ -123,7 +123,12 @@
                 @if(!empty($acc['accommodation_id']))
                     @php $accModel = $accommodations->find($acc['accommodation_id']); @endphp
                     <tr>
-                        <td>{{ $accModel->name ?? 'غير محدد' }}</td>
+                        <td>
+                            {{ $accModel->name ?? 'غير محدد' }}
+                            @if(!empty($acc['note']))
+                                <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $acc['note'] }}</span>
+                            @endif
+                        </td>
                         <td>{{ $accModel->type ?? '' }}</td>
                         <td>{{ $acc['nights'] }}</td>
                     </tr>
@@ -182,7 +187,7 @@
 
     <div class="total-box">
         <div class="total-title">الإجمالي</div>
-        <div class="total-amount">${{ number_format($totalSellingPrice, 2) }}</div>
+        <div class="total-amount">${{ number_format($finalSellingPrice, 2) }}</div>
     </div>
 
     @php

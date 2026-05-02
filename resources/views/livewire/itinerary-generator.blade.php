@@ -155,15 +155,16 @@
                     </div>
 
                     <div class="flex gap-2">
-                        <div class="w-1/2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">شراء ($)</label>
+                        <div class="w-full">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">شراء لليلة ($)</label>
                             <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100">
                         </div>
-                        <div class="w-1/2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">بيع ($)</label>
-                            <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.selling_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm font-semibold text-green-600">
-                        </div>
                     </div>
+                </div>
+                
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظة</label>
+                    <input type="text" wire:model="selectedAccommodations.{{ $index }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)">
                 </div>
             </div>
             @endforeach
@@ -206,11 +207,6 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
                     <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600">
                 </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">سعر البيع لليوم ($)</label>
-                    <input type="number" step="0.01" wire:model.live="carSellingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-semibold text-green-600">
-                </div>
                 
                 <div class="md:col-span-2 text-sm text-blue-700">
                     * سيتم حساب تكلفة السيارة لعدد <strong>{{ $totalDays }} أيام</strong> الإجمالية.
@@ -244,13 +240,9 @@
                         </div>
 
                         <div class="w-full md:w-1/4 flex gap-2">
-                            <div class="w-1/2">
+                            <div class="w-full">
                                 <label class="text-xs text-gray-500 mb-1 block">شراء ($)</label>
                                 <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($dailyTours[$i]['tour_id']) ? 'disabled' : '' }}>
-                            </div>
-                            <div class="w-1/2">
-                                <label class="text-xs text-gray-500 mb-1 block">بيع ($)</label>
-                                <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.selling_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm font-semibold text-green-600" {{ empty($dailyTours[$i]['tour_id']) ? 'disabled' : '' }}>
                             </div>
                         </div>
                     </div>
@@ -272,7 +264,7 @@
             </div>
             
             <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-6">
-                <h3 class="font-bold text-lg border-b pb-2 mb-4 text-gray-700">ملخص التكاليف (سعر البيع النهائي)</h3>
+                <h3 class="font-bold text-lg border-b pb-2 mb-4 text-gray-700">ملخص إجمالي الشراء الداخلي</h3>
                 
                 <div class="space-y-3">
                     @php $accTotal = 0; @endphp
@@ -280,12 +272,12 @@
                         @if($acc['accommodation_id'])
                             @php 
                                 $accModel = $accommodations->find($acc['accommodation_id']);
-                                $lineTotal = $acc['selling_price'] * $acc['nights'];
+                                $lineTotal = $acc['buying_price'] * $acc['nights'];
                                 $accTotal += $lineTotal;
                             @endphp
-                            <div class="flex justify-between text-sm">
+                            <div class="flex justify-between text-sm text-gray-500">
                                 <span>سكن: {{ $accModel->name ?? '' }} ({{ $acc['nights'] }} ليالي)</span>
-                                <span class="font-medium text-gray-800">${{ number_format($lineTotal, 2) }}</span>
+                                <span>${{ number_format($lineTotal, 2) }}</span>
                             </div>
                         @endif
                     @endforeach
@@ -293,33 +285,40 @@
                     @if($includeRentalCar && $selectedCarId)
                         @php 
                             $carModel = $cars->find($selectedCarId);
-                            $carTotal = $carSellingPrice * $totalDays;
+                            $carTotal = $carBuyingPrice * $totalDays;
                         @endphp
-                        <div class="flex justify-between text-sm border-t pt-3 border-gray-200">
+                        <div class="flex justify-between text-sm text-gray-500 border-t pt-3 border-gray-200">
                             <span>سيارة: {{ $carModel->car_type ?? '' }} ({{ $totalDays }} أيام)</span>
-                            <span class="font-medium text-gray-800">${{ number_format($carTotal, 2) }}</span>
+                            <span>${{ number_format($carTotal, 2) }}</span>
                         </div>
                     @endif
 
                     @php $toursTotal = 0; @endphp
                     @foreach($dailyTours as $day)
                         @if(!empty($day['tour_id']))
-                            @php $toursTotal += $day['selling_price']; @endphp
+                            @php $toursTotal += $day['buying_price']; @endphp
                         @endif
                     @endforeach
                     
                     @if($toursTotal > 0)
-                        <div class="flex justify-between text-sm border-t pt-3 border-gray-200">
+                        <div class="flex justify-between text-sm text-gray-500 border-t pt-3 border-gray-200">
                             <span>جولات سياحية (إجمالي)</span>
-                            <span class="font-medium text-gray-800">${{ number_format($toursTotal, 2) }}</span>
+                            <span>${{ number_format($toursTotal, 2) }}</span>
                         </div>
                     @endif
                 </div>
 
                 <div class="flex justify-between items-center mt-6 pt-4 border-t-2 border-gray-300">
-                    <span class="text-xl font-bold text-gray-900">الإجمالي الشامل</span>
-                    <span class="text-2xl font-black text-green-600">${{ number_format($this->totalSellingPrice, 2) }}</span>
+                    <span class="text-xl font-bold text-gray-700">إجمالي سعر الشراء:</span>
+                    <span class="text-xl font-bold text-gray-700">${{ number_format($this->totalBuyingPrice, 2) }}</span>
                 </div>
+            </div>
+            
+            <div class="bg-blue-50 rounded-xl p-6 border border-blue-200 mb-6">
+                <label class="block text-lg font-bold text-blue-900 mb-2">سعر المبيع الإجمالي لكامل الحزمة ($)</label>
+                <p class="text-sm text-blue-700 mb-3">هذا هو السعر الذي سيظهر للعميل في قسيمة الحجز النهائية.</p>
+                <input type="number" step="0.01" wire:model.live="finalSellingPrice" class="w-full rounded-xl border-blue-300 shadow-sm focus:border-blue-600 focus:ring-blue-600 text-2xl font-black text-green-700 text-center py-4" placeholder="مثال: 1500.00">
+                @error('finalSellingPrice') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
             
             <div class="flex flex-col sm:flex-row gap-4">

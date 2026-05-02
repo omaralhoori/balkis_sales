@@ -29,7 +29,7 @@ class ItineraryGenerator extends Component
     public bool $includeRentalCar = false;
     public ?int $selectedCarId = null;
     public float $carBuyingPrice = 0;
-    public float $carSellingPrice = 0;
+    public float $finalSellingPrice = 0;
 
     // Step 4: Daily Itinerary
     public array $dailyTours = []; 
@@ -73,7 +73,6 @@ class ItineraryGenerator extends Component
                 $newDailyTours[$i] = [
                     'tour_id' => $this->dailyTours[$i]['tour_id'] ?? '',
                     'buying_price' => $this->dailyTours[$i]['buying_price'] ?? 0,
-                    'selling_price' => $this->dailyTours[$i]['selling_price'] ?? 0,
                     'date' => $start->copy()->addDays($i - 1)->format('d-m-Y'),
                 ];
             }
@@ -96,7 +95,7 @@ class ItineraryGenerator extends Component
 
     public function addAccommodation()
     {
-        $this->selectedAccommodations[] = ['accommodation_id' => '', 'buying_price' => 0, 'selling_price' => 0, 'nights' => 1];
+        $this->selectedAccommodations[] = ['accommodation_id' => '', 'buying_price' => 0, 'nights' => 1, 'note' => ''];
     }
 
     public function removeAccommodation($index)
@@ -113,7 +112,6 @@ class ItineraryGenerator extends Component
                 $acc = Accommodation::find($value);
                 if ($acc) {
                     $this->selectedAccommodations[$index]['buying_price'] = $acc->default_buying_price;
-                    $this->selectedAccommodations[$index]['selling_price'] = $acc->default_selling_price;
                 }
             }
         }
@@ -125,7 +123,6 @@ class ItineraryGenerator extends Component
             $car = Car::find($value);
             if ($car) {
                 $this->carBuyingPrice = $car->default_buying_price;
-                $this->carSellingPrice = $car->default_selling_price;
             }
         }
     }
@@ -138,7 +135,6 @@ class ItineraryGenerator extends Component
                 $tour = Tour::find($value);
                 if ($tour) {
                     $this->dailyTours[$dayIndex]['buying_price'] = $tour->default_buying_price;
-                    $this->dailyTours[$dayIndex]['selling_price'] = $tour->default_selling_price;
                 }
             }
         }
@@ -162,7 +158,7 @@ class ItineraryGenerator extends Component
                 'selectedAccommodations.*.accommodation_id' => 'required',
                 'selectedAccommodations.*.nights' => 'required|numeric|min:1',
                 'selectedAccommodations.*.buying_price' => 'required|numeric|min:0',
-                'selectedAccommodations.*.selling_price' => 'required|numeric|min:0',
+                'selectedAccommodations.*.note' => 'nullable|string',
             ]);
 
             // Validate total nights
@@ -185,17 +181,17 @@ class ItineraryGenerator extends Component
         }
     }
 
-    public function getTotalSellingPriceProperty()
+    public function getTotalBuyingPriceProperty()
     {
         $total = 0;
         foreach ($this->selectedAccommodations as $acc) {
-            $total += ((float)($acc['selling_price'] ?? 0) * (int)($acc['nights'] ?? 1));
+            $total += ((float)($acc['buying_price'] ?? 0) * (int)($acc['nights'] ?? 1));
         }
         if ($this->includeRentalCar) {
-            $total += ((float)$this->carSellingPrice * $this->totalDays);
+            $total += ((float)$this->carBuyingPrice * $this->totalDays);
         }
         foreach ($this->dailyTours as $day) {
-            $total += (float)($day['selling_price'] ?? 0);
+            $total += (float)($day['buying_price'] ?? 0);
         }
         return $total;
     }
@@ -217,9 +213,10 @@ class ItineraryGenerator extends Component
             'selectedAccommodations' => $this->selectedAccommodations,
             'includeRentalCar' => $this->includeRentalCar,
             'selectedCarId' => $this->selectedCarId,
-            'carSellingPrice' => $this->carSellingPrice,
+            'carBuyingPrice' => $this->carBuyingPrice,
             'dailyTours' => $this->dailyTours,
-            'totalSellingPrice' => $this->totalSellingPrice,
+            'totalBuyingPrice' => $this->totalBuyingPrice,
+            'finalSellingPrice' => $this->finalSellingPrice,
             'additionalDetails' => $additionalDetails,
             'accommodations' => \App\Models\Accommodation::all(),
             'tours' => \App\Models\Tour::all(),
@@ -261,7 +258,7 @@ class ItineraryGenerator extends Component
         $childrenText = count($this->childrenAges) > 0 ? " و " . count($this->childrenAges) . " أطفال (أعمارهم: " . implode('، ', $this->childrenAges) . ")\n" : "\n";
         $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين" . $childrenText;
         
-        $text .= "\n*الإجمالي الشامل:* $" . number_format($this->totalSellingPrice, 2) . "\n\n";
+        $text .= "\n*الإجمالي الشامل:* $" . number_format($this->finalSellingPrice, 2) . "\n\n";
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
         
         $url = "https://api.whatsapp.com/send?text=" . urlencode($text);
