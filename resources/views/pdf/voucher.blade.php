@@ -181,9 +181,77 @@
     @endif
 
     <div class="total-box">
-        <div class="total-title">الإجمالي الشامل (سعر البيع)</div>
+        <div class="total-title">الإجمالي</div>
         <div class="total-amount">${{ number_format($totalSellingPrice, 2) }}</div>
     </div>
+
+    @php
+        $hasImages = false;
+        $accImages = [];
+        foreach($selectedAccommodations as $acc) {
+            if(!empty($acc['accommodation_id'])) {
+                $accModel = $accommodations->find($acc['accommodation_id']);
+                if ($accModel && !empty($accModel->images)) {
+                    $accImages[$accModel->name] = $accModel->images;
+                    $hasImages = true;
+                }
+            }
+        }
+        $carImages = [];
+        if($includeRentalCar && !empty($selectedCarId)) {
+            $carModel = $cars->find($selectedCarId);
+            if ($carModel && !empty($carModel->images)) {
+                $carImages[$carModel->car_type] = $carModel->images;
+                $hasImages = true;
+            }
+        }
+    @endphp
+
+    @if($hasImages)
+    <div class="section mt-5" style="margin-top: 25px">
+        <div class="section-title">صور مرفقة</div>
+        
+        @foreach($accImages as $name => $images)
+            <h3 style="color: #1e3a8a; margin-bottom: 10px;">{{ $name }}</h3>
+            <div style="text-align: center; margin-bottom: 20px;">
+                @foreach($images as $img)
+                    @php
+                        $imagePath = storage_path('app/public/' . $img);
+                        if (!file_exists($imagePath)) {
+                            $imagePath = storage_path('app/private/' . $img);
+                        }
+                        if (!file_exists($imagePath)) {
+                            $imagePath = storage_path('app/' . $img);
+                        }
+                    @endphp
+                    @if(file_exists($imagePath))
+                        <img src="{{ $imagePath }}" style="max-width: 250px; max-height: 200px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; display: inline-block;">
+                    @endif
+                @endforeach
+            </div>
+        @endforeach
+
+        @foreach($carImages as $name => $images)
+            <h3 style="color: #1e3a8a; margin-bottom: 10px;">{{ $name }}</h3>
+            <div style="text-align: center; margin-bottom: 20px;">
+                @foreach($images as $img)
+                    @php
+                        $imagePath = storage_path('app/public/' . $img);
+                        if (!file_exists($imagePath)) {
+                            $imagePath = storage_path('app/private/' . $img);
+                        }
+                        if (!file_exists($imagePath)) {
+                            $imagePath = storage_path('app/' . $img);
+                        }
+                    @endphp
+                    @if(file_exists($imagePath))
+                        <img src="{{ $imagePath }}" style="max-width: 250px; max-height: 200px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; display: inline-block;">
+                    @endif
+                @endforeach
+            </div>
+        @endforeach
+    </div>
+    @endif
 
     @if(!empty($additionalDetails))
     <div class="footer">
