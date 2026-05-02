@@ -7,9 +7,12 @@ use App\Models\Accommodation;
 use App\Models\Tour;
 use App\Models\Car;
 use Carbon\Carbon;
+use App\Models\Itinerary;
+use Illuminate\Support\Facades\Auth;
 
 class ItineraryGenerator extends Component
 {
+    public ?int $itineraryId = null;
     public int $currentStep = 1;
 
     // Step 1: Info & Dates
@@ -36,8 +39,32 @@ class ItineraryGenerator extends Component
 
     public function mount()
     {
-        $this->arrivingDate = Carbon::now()->format('d-m-Y');
-        $this->leavingDate = Carbon::now()->addDays(3)->format('d-m-Y');
+        $id = request()->query('id');
+        if ($id) {
+            $itinerary = Itinerary::where('user_id', Auth::id())->find($id);
+            if ($itinerary) {
+                $this->itineraryId = $itinerary->id;
+                $this->customerName = $itinerary->customer_name;
+                $this->destinations = $itinerary->destinations ?? [];
+                $this->arrivingDate = $itinerary->arriving_date->format('d-m-Y');
+                $this->leavingDate = $itinerary->leaving_date->format('d-m-Y');
+                
+                $data = $itinerary->data;
+                $this->adultsCount = $data['adultsCount'] ?? 1;
+                $this->childrenAges = $data['childrenAges'] ?? [];
+                $this->selectedAccommodations = $data['selectedAccommodations'] ?? [];
+                $this->includeRentalCar = $data['includeRentalCar'] ?? false;
+                $this->selectedCarId = $data['selectedCarId'] ?? null;
+                $this->carBuyingPrice = $data['carBuyingPrice'] ?? 0;
+                $this->dailyTours = $data['dailyTours'] ?? [];
+                $this->finalSellingPrice = $data['finalSellingPrice'] ?? 0;
+            }
+        }
+
+        if (!$this->arrivingDate) {
+            $this->arrivingDate = Carbon::now()->format('d-m-Y');
+            $this->leavingDate = Carbon::now()->addDays(3)->format('d-m-Y');
+        }
         $this->calculateDays();
     }
 
@@ -195,6 +222,55 @@ class ItineraryGenerator extends Component
             }
         }
         return $total;
+    }
+
+    public function saveItinerary()
+    {
+        $this->validate([
+            'finalSellingPrice' => 'required|numeric|min:0',
+        ]);
+
+        $dataToSave = [
+            'adultsCount' => $this->adultsCount,
+            'childrenAges' => $this->childrenAges,
+            'selectedAccommodations' => $this->selectedAccommodations,
+            'includeRentalCar' => $this->includeRentalCar,
+            'selectedCarId' => $this->selectedCarId,
+            'carBuyingPrice' => $this->carBuyingPrice,
+            'dailyTours' => $this->dailyTours,
+            'totalBuyingPrice' => $this->totalBuyingPrice,
+            'finalSellingPrice' => $this->finalSellingPrice,
+        ];
+
+        $arrDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->format('Y-m-d');
+        $levDate = Carbon::createFromFormat('d-m-Y', $this->leavingDate)->format('Y-m-d');
+
+        if ($this->itineraryId) {
+            $it = Itinerary::where('user_id', Auth::id())->findOrFail($this->itineraryId);
+            $it->update([
+                'customer_name' => $this->customerName,
+                'destinations' => $this->destinations,
+                'arriving_date' => $arrDate,
+                'leaving_date' => $levDate,
+                'total_days' => $this->totalDays,
+                'total_nights' => $this->totalNights,
+                'data' => $dataToSave,
+            ]);
+            session()->flash('message', 'تم تحديث البرنامج السياحي بنجاح!');
+        } else {
+            $it = Itinerary::create([
+                'user_id' => Auth::id(),
+                'customer_name' => $this->customerName,
+                'destinations' => $this->destinations,
+                'arriving_date' => $arrDate,
+                'leaving_date' => $levDate,
+                'total_days' => $this->totalDays,
+                'total_nights' => $this->totalNights,
+                'data' => $dataToSave,
+            ]);
+            $this->itineraryId = $it->id;
+            session()->flash('message', 'تم تثبيت البرنامج وحفظه بنجاح!');
+        }
     }
 
     public function downloadPdf()

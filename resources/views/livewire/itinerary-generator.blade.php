@@ -1,5 +1,18 @@
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-    
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-blue-900">منشئ البرامج السياحية</h1>
+        <div class="flex gap-3">
+            <a href="{{ route('itineraries.index') }}" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors border border-gray-300">
+                طلباتي المحفوظة
+            </a>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg font-medium transition-colors border border-red-200">
+                    تسجيل الخروج
+                </button>
+            </form>
+        </div>
+    </div>
     <!-- Progress Bar -->
     <div class="mb-8">
         <div class="flex items-center justify-between relative">
@@ -316,7 +329,17 @@
                 @error('finalSellingPrice') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
             </div>
             
+            @if(session()->has('message'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span class="block sm:inline">{{ session('message') }}</span>
+                </div>
+            @endif
+
             <div class="flex flex-col sm:flex-row gap-4">
+                <button wire:click="saveItinerary" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    تثبيت وحفظ
+                </button>
                 <button wire:click="downloadPdf" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 transition-all flex justify-center items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     تحميل PDF
