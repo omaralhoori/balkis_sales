@@ -258,7 +258,6 @@ class ItineraryGenerator extends Component
         $childrenText = count($this->childrenAges) > 0 ? " و " . count($this->childrenAges) . " أطفال (أعمارهم: " . implode('، ', $this->childrenAges) . ")\n" : "\n";
         $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين" . $childrenText;
         
-        $text .= "\n*الإجمالي الشامل:* $" . number_format($this->finalSellingPrice, 2) . "\n\n";
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
         
         $url = "https://api.whatsapp.com/send?text=" . urlencode($text);
