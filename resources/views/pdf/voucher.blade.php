@@ -95,7 +95,7 @@
                 <th width="25%">الوجهات</th>
                 <td>{{ implode('، ', $destinations) }}</td>
                 <th width="25%">عدد الأفراد</th>
-                <td>{{ $adultsCount }} بالغين @if(count($childrenAges) > 0) و {{ count($childrenAges) }} أطفال @endif</td>
+                <td>{{ $adultsCount }} بالغين @if(count($childrenAges) > 0) و {{ count($childrenAges) }} أطفال (أعمارهم: {{ implode('، ', $childrenAges) }}) @endif</td>
             </tr>
             <tr>
                 <th>تاريخ الوصول</th>

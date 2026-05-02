@@ -85,7 +85,7 @@ class ItineraryGenerator extends Component
 
     public function addChild()
     {
-        $this->childrenAges[] = 1;
+        $this->childrenAges[] = '';
     }
 
     public function removeChild($index)
@@ -257,7 +257,10 @@ class ItineraryGenerator extends Component
         $text .= "*تاريخ المغادرة:* {$this->leavingDate}\n";
         $text .= "*المدة:* {$this->totalDays} أيام / {$this->totalNights} ليالي\n";
         $text .= "*الوجهات:* {$dests}\n";
-        $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين" . (count($this->childrenAges) > 0 ? " و " . count($this->childrenAges) . " أطفال\n" : "\n");
+        
+        $childrenText = count($this->childrenAges) > 0 ? " و " . count($this->childrenAges) . " أطفال (أعمارهم: " . implode('، ', $this->childrenAges) . ")\n" : "\n";
+        $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين" . $childrenText;
+        
         $text .= "\n*الإجمالي الشامل:* $" . number_format($this->totalSellingPrice, 2) . "\n\n";
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
         
