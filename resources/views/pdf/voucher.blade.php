@@ -196,10 +196,29 @@
     </div>
     @endif
 
-    <div class="total-box">
-        <div class="total-title">الإجمالي</div>
-        <div class="total-amount">${{ number_format($finalSellingPrice, 2) }}</div>
-    </div>
+    @if(!empty($deposit) && $deposit > 0)
+        <table style="width: 100%; margin-top: 30px; border: 1px solid #10b981; background-color: #ecfdf5; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 15px; text-align: center; border: none; width: 33.3%;">
+                    <div style="font-size: 15px; color: #065f46; margin-bottom: 5px; font-weight: bold;">سعر المبيع الإجمالي</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #047857;">${{ number_format($finalSellingPrice, 2) }}</div>
+                </td>
+                <td style="padding: 15px; text-align: center; border-right: 1px solid #10b981; border-top: none; border-bottom: none; border-left: none; width: 33.3%;">
+                    <div style="font-size: 15px; color: #9a3412; margin-bottom: 5px; font-weight: bold;">العربون المدفوع</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #c2410c;">${{ number_format($deposit, 2) }}</div>
+                </td>
+                <td style="padding: 15px; text-align: center; border-right: 1px solid #10b981; border-top: none; border-bottom: none; border-left: none; width: 33.3%;">
+                    <div style="font-size: 15px; color: #1e3a8a; margin-bottom: 5px; font-weight: bold;">المبلغ المتبقي</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #2563eb;">${{ number_format($remaining, 2) }}</div>
+                </td>
+            </tr>
+        </table>
+    @else
+        <div class="total-box">
+            <div class="total-title">سعر المبيع الإجمالي</div>
+            <div class="total-amount">${{ number_format($finalSellingPrice, 2) }}</div>
+        </div>
+    @endif
 
     @php
         $hasImages = false;

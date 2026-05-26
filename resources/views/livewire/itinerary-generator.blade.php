@@ -31,6 +31,19 @@
     </div>
 
     <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
+        @if($isPinned)
+            <div class="bg-red-50 border-r-4 border-red-500 p-4 m-6 rounded-xl flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-red-500 ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <div>
+                        <p class="text-red-800 font-bold">هذا البرنامج السياحي مثبت ومغلق.</p>
+                        <p class="text-red-700 text-sm mt-1">
+                            {{ $this->isEditable ? 'أنت تتصفح بصفتك مسؤول النظام (Super Admin)، لذا يمكنك إجراء تعديلات وحفظها.' : 'لا يمكن التعديل عليه أو حفظ التغييرات إلا من خلال المدير العام.' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
         
         <!-- Step 1: Info -->
         @if($currentStep == 1)
@@ -40,29 +53,33 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">اسم العميل</label>
-                    <input type="text" wire:model="customerName" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="محمد أحمد...">
+                    <input type="text" wire:model="customerName" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="محمد أحمد..." {{ !$this->isEditable ? 'disabled' : '' }}>
                     @error('customerName') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">عدد البالغين</label>
-                    <input type="number" wire:model="adultsCount" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1">
+                    <input type="number" wire:model="adultsCount" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1" {{ !$this->isEditable ? 'disabled' : '' }}>
                     @error('adultsCount') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="md:col-span-2">
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-sm font-medium text-gray-700">الأطفال وأعمارهم</label>
-                        <button type="button" wire:click="addChild" class="text-blue-600 text-sm font-medium hover:underline">+ إضافة طفل</button>
+                        @if($this->isEditable)
+                            <button type="button" wire:click="addChild" class="text-blue-600 text-sm font-medium hover:underline">+ إضافة طفل</button>
+                        @endif
                     </div>
                     @if(count($childrenAges) > 0)
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                             @foreach($childrenAges as $index => $age)
                             <div class="relative flex items-center">
-                                <input type="number" wire:model="childrenAges.{{ $index }}" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8" placeholder="العمر" min="0" max="12">
-                                <button type="button" wire:click="removeChild({{ $index }})" class="absolute right-2 text-red-500 hover:text-red-700">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
+                                <input type="number" wire:model="childrenAges.{{ $index }}" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8" placeholder="العمر" min="0" max="12" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                @if($this->isEditable)
+                                    <button type="button" wire:click="removeChild({{ $index }})" class="absolute right-2 text-red-500 hover:text-red-700">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                @endif
                             </div>
                             @endforeach
                         </div>
@@ -82,11 +99,13 @@
                                        dateFormat: 'd-m-Y', 
                                        allowInput: true,
                                        defaultDate: value,
+                                       clickOpens: {{ $this->isEditable ? 'true' : 'false' }},
                                        onChange: function(selectedDates, dateStr) { value = dateStr; }
                                    })" 
                                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
                                    dir="ltr" 
-                                   placeholder="DD-MM-YYYY">
+                                   placeholder="DD-MM-YYYY"
+                                   {{ !$this->isEditable ? 'disabled' : '' }}>
                         </div>
                         @error('arrivingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
@@ -96,7 +115,8 @@
                         <input type="time" 
                                wire:model="arrivingTime" 
                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
-                               dir="ltr">
+                               dir="ltr"
+                               {{ !$this->isEditable ? 'disabled' : '' }}>
                         @error('arrivingTime') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
@@ -109,11 +129,13 @@
                                        dateFormat: 'd-m-Y', 
                                        allowInput: true,
                                        defaultDate: value,
+                                       clickOpens: {{ $this->isEditable ? 'true' : 'false' }},
                                        onChange: function(selectedDates, dateStr) { value = dateStr; }
                                    })" 
                                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
                                    dir="ltr" 
-                                   placeholder="DD-MM-YYYY">
+                                   placeholder="DD-MM-YYYY"
+                                   {{ !$this->isEditable ? 'disabled' : '' }}>
                         </div>
                         @error('leavingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
@@ -135,7 +157,7 @@
             <!-- اختيار الوجهات بأعلى القسم -->
             <div class="mb-8" wire:ignore>
                 <label class="block text-sm font-medium text-gray-700 mb-2">الوجهات (المدن)</label>
-                <select multiple wire:model="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button']})" class="w-full">
+                <select multiple wire:model="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button'], disabled: {{ !$this->isEditable ? 'true' : 'false' }}})" class="w-full" {{ !$this->isEditable ? 'disabled' : '' }}>
                     <option value="">اختر الوجهات...</option>
                     @foreach($dbDestinations as $dest)
                         <option value="{{ $dest->id }}">{{ $dest->name }}</option>
@@ -147,9 +169,11 @@
             <div class="mt-8 border-t pt-8">
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
                     <h3 class="text-xl font-bold text-gray-800">أماكن الإقامة (الفنادق)</h3>
-                    <button wire:click="addAccommodation" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors text-sm">
-                        + إضافة سكن
-                    </button>
+                    @if($this->isEditable)
+                        <button wire:click="addAccommodation" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors text-sm">
+                            + إضافة سكن
+                        </button>
+                    @endif
                 </div>
                 @error('accommodation_nights')
                     <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm border border-red-200">
@@ -159,7 +183,7 @@
 
                 @foreach($selectedAccommodations as $index => $acc)
                 <div class="bg-gray-50 p-5 rounded-xl mb-4 border border-gray-200 relative">
-                    @if(count($selectedAccommodations) > 1)
+                    @if($this->isEditable && count($selectedAccommodations) > 1)
                     <button wire:click="removeAccommodation({{ $index }})" class="absolute top-4 left-4 text-red-500 hover:text-red-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
@@ -168,7 +192,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">اختر السكن</label>
-                            <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
                                 <option value="">-- يرجى الاختيار --</option>
                                 @foreach($accommodations as $accommodation)
                                     <option value="{{ $accommodation->id }}">{{ $accommodation->name }} ({{ $accommodation->type }})</option>
@@ -179,21 +203,21 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">عدد الليالي</label>
-                            <input type="number" wire:model.live="selectedAccommodations.{{ $index }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1">
+                            <input type="number" wire:model.live="selectedAccommodations.{{ $index }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1" {{ !$this->isEditable ? 'disabled' : '' }}>
                             @error('selectedAccommodations.'.$index.'.nights') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="flex gap-2">
                             <div class="w-full">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">شراء لليلة ($)</label>
-                                <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100">
+                                <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ !$this->isEditable ? 'disabled' : '' }}>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظة</label>
-                        <input type="text" wire:model="selectedAccommodations.{{ $index }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)">
+                        <input type="text" wire:model="selectedAccommodations.{{ $index }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)" {{ !$this->isEditable ? 'disabled' : '' }}>
                     </div>
                 </div>
                 @endforeach
@@ -207,9 +231,9 @@
             <div class="mt-8 border-t pt-8">
                 <h3 class="text-xl font-bold text-gray-800 mb-6 pb-4 border-b">السيارة والبرنامج السياحي</h3>
                 
-                <label class="flex items-center cursor-pointer mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">
+                <label class="flex items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 {{ $this->isEditable ? 'cursor-pointer hover:bg-gray-100' : 'opacity-60' }} transition-colors">
                     <div class="relative">
-                        <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only">
+                        <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only" {{ !$this->isEditable ? 'disabled' : '' }}>
                         <div class="block bg-gray-300 w-14 h-8 rounded-full transition-colors {{ $includeRentalCar ? 'bg-blue-500' : '' }}"></div>
                         <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ $includeRentalCar ? 'translate-x-6' : '' }}"></div>
                     </div>
@@ -222,7 +246,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-6 rounded-xl border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">نوع السيارة</label>
-                        <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
                             <option value="">-- يرجى الاختيار --</option>
                             @foreach($cars as $car)
                                 <option value="{{ $car->id }}">{{ $car->car_type }}</option>
@@ -232,7 +256,7 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
-                        <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600">
+                        <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600" {{ !$this->isEditable ? 'disabled' : '' }}>
                     </div>
                     
                     <div class="md:col-span-2 text-sm text-blue-700">
@@ -251,7 +275,7 @@
                             </div>
                             
                             <div class="w-full md:w-1/2">
-                                <select wire:model.live="dailyTours.{{ $i }}.tour_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                <select wire:model.live="dailyTours.{{ $i }}.tour_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" {{ !$this->isEditable ? 'disabled' : '' }}>
                                     <option value="">-- اختر جولة سياحية (اختياري) --</option>
                                     @foreach($tours as $tour)
                                         <option value="{{ $tour->id }}">{{ $tour->name }} ({{ $tour->type }})</option>
@@ -262,7 +286,7 @@
                             <div class="w-full md:w-1/4 flex gap-2">
                                 <div class="w-full">
                                     <label class="text-xs text-gray-500 mb-1 block">شراء ($)</label>
-                                    <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($dailyTours[$i]['tour_id']) ? 'disabled' : '' }}>
+                                    <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($dailyTours[$i]['tour_id']) || !$this->isEditable ? 'disabled' : '' }}>
                                 </div>
                             </div>
                         </div>
@@ -337,11 +361,20 @@
                 </div>
             </div>
             
-            <div class="bg-blue-50 rounded-xl p-6 border border-blue-200 mb-6">
-                <label class="block text-lg font-bold text-blue-900 mb-2">سعر المبيع الإجمالي لكامل الحزمة ($)</label>
-                <p class="text-sm text-blue-700 mb-3">هذا هو السعر الذي سيظهر للعميل في قسيمة الحجز النهائية.</p>
-                <input type="number" step="0.01" wire:model.live="finalSellingPrice" class="w-full rounded-xl border-blue-300 shadow-sm focus:border-blue-600 focus:ring-blue-600 text-2xl font-black text-green-700 text-center py-4" placeholder="مثال: 1500.00">
-                @error('finalSellingPrice') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                    <label class="block text-lg font-bold text-blue-900 mb-2">سعر المبيع الإجمالي لكامل الحزمة ($)</label>
+                    <p class="text-sm text-blue-700 mb-3">هذا هو السعر الذي سيظهر للعميل في قسيمة الحجز النهائية.</p>
+                    <input type="number" step="0.01" wire:model.live="finalSellingPrice" class="w-full rounded-xl border-blue-300 shadow-sm focus:border-blue-600 focus:ring-blue-600 text-2xl font-black text-green-700 text-center py-4" placeholder="مثال: 1500.00" {{ !$this->isEditable ? 'disabled' : '' }}>
+                    @error('finalSellingPrice') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="bg-amber-50 rounded-xl p-6 border border-amber-200">
+                    <label class="block text-lg font-bold text-amber-900 mb-2">العربون المدفوع (اختياري) ($)</label>
+                    <p class="text-sm text-amber-700 mb-3">المبلغ المتبقي: <strong class="text-xl text-blue-800">${{ number_format(max(0, $finalSellingPrice - ($deposit ?? 0)), 2) }}</strong></p>
+                    <input type="number" step="0.01" wire:model.live="deposit" class="w-full rounded-xl border-amber-300 shadow-sm focus:border-amber-600 focus:ring-amber-600 text-2xl font-black text-amber-700 text-center py-4" placeholder="مثال: 500.00" {{ !$this->isEditable ? 'disabled' : '' }}>
+                    @error('deposit') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
             </div>
             
             @if(session()->has('message'))
@@ -351,10 +384,24 @@
             @endif
 
             <div class="flex flex-col sm:flex-row gap-4">
-                <button wire:click="saveItinerary" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                    تثبيت وحفظ
-                </button>
+                @if(!$isPinned)
+                    <button wire:click="saveItinerary" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                        حفظ كمسودة
+                    </button>
+                @elseif($this->isEditable)
+                    <button wire:click="saveItinerary" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        حفظ التعديلات (مسؤول)
+                    </button>
+                @endif
+
+                @if($this->isEditable)
+                    <button wire:click="pinItinerary" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all flex justify-center items-center gap-2" {{ $isPinned ? 'disabled' : '' }}>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        {{ $isPinned ? 'تم التثبيت' : 'تثبيت البرنامج' }}
+                    </button>
+                @endif
                 <button wire:click="downloadPdf" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 transition-all flex justify-center items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     تحميل PDF

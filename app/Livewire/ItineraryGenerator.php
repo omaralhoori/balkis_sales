@@ -50,20 +50,30 @@ class ItineraryGenerator extends Component
 
     public float $finalSellingPrice = 0;
 
+    public bool $isPinned = false;
+
+    public ?float $deposit = null;
+
     // Step 4: Daily Itinerary
     public array $dailyTours = [];
 
-    public function mount()
+    public function mount(?int $id = null)
     {
-        $id = request()->query('id');
+        $id = $id ?? request()->query('id');
         if ($id) {
-            $itinerary = Itinerary::where('user_id', Auth::id())->find($id);
+            $query = Itinerary::query();
+            if (Auth::user()?->email !== config('auth.super_admin_email')) {
+                $query->where('user_id', Auth::id());
+            }
+            $itinerary = $query->find($id);
             if ($itinerary) {
                 $this->itineraryId = $itinerary->id;
                 $this->customerName = $itinerary->customer_name;
                 $this->destinations = $itinerary->destinations ?? [];
                 $this->arrivingDate = $itinerary->arriving_date->format('d-m-Y');
                 $this->leavingDate = $itinerary->leaving_date->format('d-m-Y');
+                $this->isPinned = $itinerary->is_pinned;
+                $this->deposit = $itinerary->deposit;
 
                 $data = $itinerary->data;
                 $this->adultsCount = $data['adultsCount'] ?? 1;
@@ -251,8 +261,21 @@ class ItineraryGenerator extends Component
         return $total;
     }
 
+    public function getIsEditableProperty(): bool
+    {
+        if (! $this->isPinned) {
+            return true;
+        }
+
+        return Auth::user()?->email === config('auth.super_admin_email');
+    }
+
     public function saveItinerary()
     {
+        if (! $this->isEditable) {
+            abort(403, 'غير مصرح لك بتعديل هذا البرنامج السياحي لأنه مثبت.');
+        }
+
         $this->validate([
             'finalSellingPrice' => 'required|numeric|min:0',
         ]);
@@ -274,7 +297,11 @@ class ItineraryGenerator extends Component
         $levDate = Carbon::createFromFormat('d-m-Y', $this->leavingDate)->format('Y-m-d');
 
         if ($this->itineraryId) {
-            $it = Itinerary::where('user_id', Auth::id())->findOrFail($this->itineraryId);
+            $query = Itinerary::query();
+            if (Auth::user()?->email !== config('auth.super_admin_email')) {
+                $query->where('user_id', Auth::id());
+            }
+            $it = $query->findOrFail($this->itineraryId);
             $it->update([
                 'customer_name' => $this->customerName,
                 'destinations' => $this->destinations,
@@ -283,6 +310,8 @@ class ItineraryGenerator extends Component
                 'total_days' => $this->totalDays,
                 'total_nights' => $this->totalNights,
                 'data' => $dataToSave,
+                'is_pinned' => $this->isPinned,
+                'deposit' => $this->deposit,
             ]);
             session()->flash('message', 'تم تحديث البرنامج السياحي بنجاح!');
         } else {
@@ -295,10 +324,78 @@ class ItineraryGenerator extends Component
                 'total_days' => $this->totalDays,
                 'total_nights' => $this->totalNights,
                 'data' => $dataToSave,
+                'is_pinned' => false,
+                'deposit' => $this->deposit,
             ]);
             $this->itineraryId = $it->id;
-            session()->flash('message', 'تم تثبيت البرنامج وحفظه بنجاح!');
+            session()->flash('message', 'تم حفظ مسودة البرنامج بنجاح!');
         }
+    }
+
+    public function pinItinerary()
+    {
+        if (! $this->isEditable) {
+            abort(403, 'غير مصرح لك بتعديل هذا البرنامج السياحي لأنه مثبت.');
+        }
+
+        $this->validate([
+            'finalSellingPrice' => 'required|numeric|min:0',
+            'deposit' => 'nullable|numeric|min:0|max:'.$this->finalSellingPrice,
+        ]);
+
+        $this->isPinned = true;
+        unset($this->isEditable);
+
+        $dataToSave = [
+            'adultsCount' => $this->adultsCount,
+            'childrenAges' => $this->childrenAges,
+            'arrivingTime' => $this->arrivingTime,
+            'selectedAccommodations' => $this->selectedAccommodations,
+            'includeRentalCar' => $this->includeRentalCar,
+            'selectedCarId' => $this->selectedCarId,
+            'carBuyingPrice' => $this->carBuyingPrice,
+            'dailyTours' => $this->dailyTours,
+            'totalBuyingPrice' => $this->totalBuyingPrice,
+            'finalSellingPrice' => $this->finalSellingPrice,
+        ];
+
+        $arrDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->format('Y-m-d');
+        $levDate = Carbon::createFromFormat('d-m-Y', $this->leavingDate)->format('Y-m-d');
+
+        if ($this->itineraryId) {
+            $query = Itinerary::query();
+            if (Auth::user()?->email !== config('auth.super_admin_email')) {
+                $query->where('user_id', Auth::id());
+            }
+            $it = $query->findOrFail($this->itineraryId);
+            $it->update([
+                'customer_name' => $this->customerName,
+                'destinations' => $this->destinations,
+                'arriving_date' => $arrDate,
+                'leaving_date' => $levDate,
+                'total_days' => $this->totalDays,
+                'total_nights' => $this->totalNights,
+                'data' => $dataToSave,
+                'is_pinned' => true,
+                'deposit' => $this->deposit,
+            ]);
+        } else {
+            $it = Itinerary::create([
+                'user_id' => Auth::id(),
+                'customer_name' => $this->customerName,
+                'destinations' => $this->destinations,
+                'arriving_date' => $arrDate,
+                'leaving_date' => $levDate,
+                'total_days' => $this->totalDays,
+                'total_nights' => $this->totalNights,
+                'data' => $dataToSave,
+                'is_pinned' => true,
+                'deposit' => $this->deposit,
+            ]);
+            $this->itineraryId = $it->id;
+        }
+
+        session()->flash('message', 'تم تثبيت البرنامج بنجاح ولا يمكن التعديل عليه الآن!');
     }
 
     public function downloadPdf()
@@ -323,6 +420,8 @@ class ItineraryGenerator extends Component
             'dailyTours' => $this->dailyTours,
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
+            'deposit' => $this->deposit,
+            'remaining' => $this->finalSellingPrice - ($this->deposit ?? 0),
             'additionalDetails' => $additionalDetails,
             'accommodations' => Accommodation::all(),
             'tours' => Tour::all(),
@@ -363,6 +462,15 @@ class ItineraryGenerator extends Component
 
         $childrenText = count($this->childrenAges) > 0 ? ' و '.count($this->childrenAges).' أطفال (أعمارهم: '.implode('، ', $this->childrenAges).")\n" : "\n";
         $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين".$childrenText;
+
+        if ($this->deposit > 0) {
+            $remaining = $this->finalSellingPrice - $this->deposit;
+            $text .= "*سعر المبيع الإجمالي:* {$this->finalSellingPrice} $\n";
+            $text .= "*العربون المدفوع:* {$this->deposit} $\n";
+            $text .= "*المبلغ المتبقي:* {$remaining} $\n\n";
+        } else {
+            $text .= "*سعر المبيع الإجمالي:* {$this->finalSellingPrice} $\n\n";
+        }
 
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
 

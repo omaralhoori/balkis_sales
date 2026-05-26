@@ -15,6 +15,8 @@ class Itinerary extends Model
         'total_days',
         'total_nights',
         'data',
+        'is_pinned',
+        'deposit',
     ];
 
     protected $casts = [
@@ -22,6 +24,8 @@ class Itinerary extends Model
         'data' => 'array',
         'arriving_date' => 'date',
         'leaving_date' => 'date',
+        'is_pinned' => 'boolean',
+        'deposit' => 'float',
     ];
 
     public function user()

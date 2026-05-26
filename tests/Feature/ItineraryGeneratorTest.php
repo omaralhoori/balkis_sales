@@ -189,3 +189,59 @@ test('it filters accommodations and tours reactively by selected destinations', 
     expect($dailyTours[2]['tour_id'])->toBe('');
     expect($dailyTours[2]['buying_price'])->toBe(0);
 });
+
+test('it saves itinerary as draft by default and pins it with deposit when pinned', function () {
+    $user = User::factory()->create(['email' => 'employee@example.com']);
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+
+    // 1. Save Itinerary (draft)
+    $component = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد أحمد')
+        ->set('adultsCount', 2)
+        ->set('childrenAges', [5, 10])
+        ->set('destinations', [$destination->id])
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '27-10-2026')
+        ->call('nextStep')
+        ->set('finalSellingPrice', 1500)
+        ->call('saveItinerary')
+        ->assertHasNoErrors();
+
+    $itinerary = Itinerary::first();
+    expect($itinerary->is_pinned)->toBeFalse();
+    expect($itinerary->deposit)->toBeNull();
+
+    // 2. Pin Itinerary with deposit
+    $component->set('deposit', 500)
+        ->call('pinItinerary')
+        ->assertHasNoErrors();
+
+    $itinerary->refresh();
+    expect($itinerary->is_pinned)->toBeTrue();
+    expect($itinerary->deposit)->toBe(500.0);
+
+    // 3. Regular user editing pinned itinerary should be blocked (403)
+    expect($component->instance()->isEditable)->toBeFalse();
+
+    // Attempting to save again as regular user should abort
+    $component->call('saveItinerary')
+        ->assertStatus(403);
+
+    // 4. Super Admin editing pinned itinerary is allowed
+    config(['auth.super_admin_email' => 'admin@example.com']);
+    $adminUser = User::factory()->create(['email' => 'admin@example.com']);
+    actingAs($adminUser);
+
+    // Reload the component as super admin
+    $adminComponent = Livewire::test(ItineraryGenerator::class, ['id' => $itinerary->id]);
+    expect($adminComponent->instance()->isEditable)->toBeTrue();
+
+    $adminComponent->set('finalSellingPrice', 1600)
+        ->call('saveItinerary')
+        ->assertHasNoErrors();
+
+    $itinerary->refresh();
+    expect($itinerary->data['finalSellingPrice'])->toEqual(1600);
+});
