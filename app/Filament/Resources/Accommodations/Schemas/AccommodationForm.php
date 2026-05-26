@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Accommodations\Schemas;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Schema;
 
 class AccommodationForm
 {
@@ -14,6 +14,10 @@ class AccommodationForm
         return $schema
             ->components([
                 TextInput::make('name')->label('اسم السكن')->required(),
+                Select::make('destination_id')
+                    ->label('الوجهة')
+                    ->relationship('destination', 'name')
+                    ->required(),
                 Select::make('type')->label('نوع السكن')->options([
                     'فندق' => 'فندق',
                     'شقق فندقية' => 'شقق فندقية',

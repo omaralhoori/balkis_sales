@@ -371,11 +371,47 @@ class ItineraryGenerator extends Component
         $this->dispatch('open-url', url: $url);
     }
 
+    public function updatedDestinations()
+    {
+        $validAccIds = Accommodation::whereIn('destination_id', $this->destinations)->pluck('id')->toArray();
+
+        $this->selectedAccommodations = collect($this->selectedAccommodations)
+            ->filter(function ($acc) use ($validAccIds) {
+                return empty($acc['accommodation_id']) || in_array($acc['accommodation_id'], $validAccIds);
+            })
+            ->values()
+            ->toArray();
+
+        if (empty($this->selectedAccommodations) && $this->currentStep == 2) {
+            $this->addAccommodation();
+        }
+
+        $validTourIds = Tour::whereIn('destination_id', $this->destinations)->pluck('id')->toArray();
+
+        foreach ($this->dailyTours as $dayIndex => $day) {
+            if (! empty($day['tour_id']) && ! in_array($day['tour_id'], $validTourIds)) {
+                $this->dailyTours[$dayIndex]['tour_id'] = '';
+                $this->dailyTours[$dayIndex]['buying_price'] = 0;
+            }
+        }
+    }
+
     public function render()
     {
+        $accommodations = Accommodation::query();
+        $tours = Tour::query();
+
+        if (! empty($this->destinations)) {
+            $accommodations->whereIn('destination_id', $this->destinations);
+            $tours->whereIn('destination_id', $this->destinations);
+        } else {
+            $accommodations->whereNull('id');
+            $tours->whereNull('id');
+        }
+
         return view('livewire.itinerary-generator', [
-            'accommodations' => Accommodation::all(),
-            'tours' => Tour::all(),
+            'accommodations' => $accommodations->get(),
+            'tours' => $tours->get(),
             'cars' => Car::all(),
             'dbDestinations' => Destination::all(),
         ])->layout('layouts.app');

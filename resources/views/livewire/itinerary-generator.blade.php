@@ -166,9 +166,9 @@
                     @endif
                     
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="md:col-span-2" wire:ignore>
+                        <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">اختر السكن</label>
-                            <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" x-data x-init="new TomSelect($el, {create: false})" class="w-full">
+                            <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">-- يرجى الاختيار --</option>
                                 @foreach($accommodations as $accommodation)
                                     <option value="{{ $accommodation->id }}">{{ $accommodation->name }} ({{ $accommodation->type }})</option>
