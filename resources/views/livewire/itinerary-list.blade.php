@@ -1,6 +1,8 @@
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">طلباتي المحفوظة</h2>
+        <h2 class="text-2xl font-bold text-gray-800">
+            {{ Auth::user()?->email === config('auth.super_admin_email') ? 'الطلبات المحفوظة (المسؤول)' : 'طلباتي المحفوظة' }}
+        </h2>
         <a href="{{ route('home') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors">
             + إنشاء رحلة جديدة
         </a>
@@ -26,8 +28,13 @@
                     <tbody>
                         @foreach($itineraries as $itinerary)
                         <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="px-6 py-4 font-bold text-gray-900">
-                                {{ $itinerary->customer_name }}
+                            <td class="px-6 py-4 font-bold text-gray-900 flex items-center gap-2">
+                                <span>{{ $itinerary->customer_name }}</span>
+                                @if($itinerary->is_pinned)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">مثبت</span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">مسودة</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
                                 {{ $itinerary->arriving_date->format('Y-m-d') }}
