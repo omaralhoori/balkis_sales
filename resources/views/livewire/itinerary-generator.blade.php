@@ -361,18 +361,46 @@
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div
+                class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
+                x-data="{
+                    price: {{ (float) $finalSellingPrice }},
+                    deposit: {{ (float) ($deposit ?? 0) }},
+                    get remaining() {
+                        return Math.max(0, this.price - this.deposit);
+                    }
+                }"
+            >
                 <div class="bg-blue-50 rounded-xl p-6 border border-blue-200">
                     <label class="block text-lg font-bold text-blue-900 mb-2">سعر المبيع الإجمالي لكامل الحزمة ($)</label>
                     <p class="text-sm text-blue-700 mb-3">هذا هو السعر الذي سيظهر للعميل في قسيمة الحجز النهائية.</p>
-                    <input type="number" step="0.01" wire:model.live="finalSellingPrice" class="w-full rounded-xl border-blue-300 shadow-sm focus:border-blue-600 focus:ring-blue-600 text-2xl font-black text-green-700 text-center py-4" placeholder="مثال: 1500.00" {{ !$this->isEditable ? 'disabled' : '' }}>
+                    <input
+                        type="number"
+                        step="0.01"
+                        x-model="price"
+                        x-on:blur="$wire.set('finalSellingPrice', price)"
+                        class="w-full rounded-xl border-blue-300 shadow-sm focus:border-blue-600 focus:ring-blue-600 text-2xl font-black text-green-700 text-center py-4"
+                        placeholder="مثال: 1500.00"
+                        {{ !$this->isEditable ? 'disabled' : '' }}
+                    >
                     @error('finalSellingPrice') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="bg-amber-50 rounded-xl p-6 border border-amber-200">
                     <label class="block text-lg font-bold text-amber-900 mb-2">العربون المدفوع (اختياري) ($)</label>
-                    <p class="text-sm text-amber-700 mb-3">المبلغ المتبقي: <strong class="text-xl text-blue-800">${{ number_format(max(0, $finalSellingPrice - ($deposit ?? 0)), 2) }}</strong></p>
-                    <input type="number" step="0.01" wire:model.live="deposit" class="w-full rounded-xl border-amber-300 shadow-sm focus:border-amber-600 focus:ring-amber-600 text-2xl font-black text-amber-700 text-center py-4" placeholder="مثال: 500.00" {{ !$this->isEditable ? 'disabled' : '' }}>
+                    <p class="text-sm text-amber-700 mb-3">
+                        المبلغ المتبقي:
+                        <strong class="text-xl text-blue-800" x-text="'$' + remaining.toFixed(2)"></strong>
+                    </p>
+                    <input
+                        type="number"
+                        step="0.01"
+                        x-model="deposit"
+                        x-on:blur="$wire.set('deposit', deposit)"
+                        class="w-full rounded-xl border-amber-300 shadow-sm focus:border-amber-600 focus:ring-amber-600 text-2xl font-black text-amber-700 text-center py-4"
+                        placeholder="مثال: 500.00"
+                        {{ !$this->isEditable ? 'disabled' : '' }}
+                    >
                     @error('deposit') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
             </div>

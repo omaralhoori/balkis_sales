@@ -156,7 +156,19 @@ class ItineraryGenerator extends Component
 
     public function addAccommodation()
     {
-        $this->selectedAccommodations[] = ['accommodation_id' => '', 'buying_price' => 0, 'nights' => 1, 'note' => ''];
+        $defaultNights = 1;
+
+        if (empty($this->selectedAccommodations)) {
+            $defaultNights = $this->totalNights > 0 ? $this->totalNights : 1;
+        } else {
+            $lastIndex = count($this->selectedAccommodations) - 1;
+            if ($this->selectedAccommodations[$lastIndex]['nights'] > 1) {
+                $this->selectedAccommodations[$lastIndex]['nights']--;
+                $defaultNights = 1;
+            }
+        }
+
+        $this->selectedAccommodations[] = ['accommodation_id' => '', 'buying_price' => 0, 'nights' => $defaultNights, 'note' => ''];
     }
 
     public function removeAccommodation($index)

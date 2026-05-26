@@ -289,3 +289,37 @@ test('it renders video url in voucher if accommodation has one', function () {
     expect($html)->toContain('https://youtube.com/watch?v=12345');
     expect($html)->toContain('رابط الفيديو:');
 });
+
+test('it sets default accommodation nights to itinerary total nights and decrements previous when adding new one', function () {
+    $destination = Destination::create(['name' => 'إسطنبول']);
+
+    $component = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد احمد')
+        ->set('adultsCount', 2)
+        ->set('childrenAges', [])
+        ->set('destinations', [$destination->id])
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '25-10-2026') // 5 nights
+        ->call('nextStep'); // Transition to step 2, which calls addAccommodation if empty
+
+    // First accommodation nights should default to total nights (5)
+    $accommodations = $component->get('selectedAccommodations');
+    expect(count($accommodations))->toBe(1);
+    expect($accommodations[0]['nights'])->toBe(5);
+
+    // Adding second accommodation should decrement the first one's nights and set new one's nights to 1
+    $component->call('addAccommodation');
+    $accommodations = $component->get('selectedAccommodations');
+    expect(count($accommodations))->toBe(2);
+    expect($accommodations[0]['nights'])->toBe(4);
+    expect($accommodations[1]['nights'])->toBe(1);
+
+    // Adding third accommodation should decrement the second one's nights (which is 1, so it cannot be decremented)
+    // First should remain 4, second should remain 1, third should default to 1
+    $component->call('addAccommodation');
+    $accommodations = $component->get('selectedAccommodations');
+    expect(count($accommodations))->toBe(3);
+    expect($accommodations[0]['nights'])->toBe(4);
+    expect($accommodations[1]['nights'])->toBe(1);
+    expect($accommodations[2]['nights'])->toBe(1);
+});
