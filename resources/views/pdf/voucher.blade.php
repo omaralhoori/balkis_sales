@@ -99,7 +99,7 @@
             </tr>
             <tr>
                 <th>تاريخ الوصول</th>
-                <td>{{ $arrivingDate }}</td>
+                <td>{{ $arrivingDate }} @if(!empty($arrivingTime)) (الساعة: {{ $arrivingTime }}) @endif</td>
                 <th>تاريخ المغادرة</th>
                 <td>{{ $leavingDate }}</td>
             </tr>

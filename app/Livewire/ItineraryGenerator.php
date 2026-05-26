@@ -2,40 +2,56 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Models\Accommodation;
-use App\Models\Tour;
 use App\Models\Car;
-use Carbon\Carbon;
+use App\Models\Destination;
 use App\Models\Itinerary;
+use App\Models\Setting;
+use App\Models\Tour;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
+use Mpdf\Mpdf;
 
 class ItineraryGenerator extends Component
 {
     public ?int $itineraryId = null;
+
     public int $currentStep = 1;
 
     // Step 1: Info & Dates
     public string $customerName = '';
+
     public int $adultsCount = 1;
+
     public array $childrenAges = [];
+
     public array $destinations = [];
+
     public string $arrivingDate = '';
+
+    public string $arrivingTime = '';
+
     public string $leavingDate = '';
+
     public int $totalDays = 0;
+
     public int $totalNights = 0;
 
     // Step 2: Accommodations
-    public array $selectedAccommodations = []; 
+    public array $selectedAccommodations = [];
 
     // Step 3: Cars
     public bool $includeRentalCar = false;
+
     public ?int $selectedCarId = null;
+
     public float $carBuyingPrice = 0;
+
     public float $finalSellingPrice = 0;
 
     // Step 4: Daily Itinerary
-    public array $dailyTours = []; 
+    public array $dailyTours = [];
 
     public function mount()
     {
@@ -48,10 +64,11 @@ class ItineraryGenerator extends Component
                 $this->destinations = $itinerary->destinations ?? [];
                 $this->arrivingDate = $itinerary->arriving_date->format('d-m-Y');
                 $this->leavingDate = $itinerary->leaving_date->format('d-m-Y');
-                
+
                 $data = $itinerary->data;
                 $this->adultsCount = $data['adultsCount'] ?? 1;
                 $this->childrenAges = $data['childrenAges'] ?? [];
+                $this->arrivingTime = $data['arrivingTime'] ?? '';
                 $this->selectedAccommodations = $data['selectedAccommodations'] ?? [];
                 $this->includeRentalCar = $data['includeRentalCar'] ?? false;
                 $this->selectedCarId = $data['selectedCarId'] ?? null;
@@ -61,15 +78,22 @@ class ItineraryGenerator extends Component
             }
         }
 
-        if (!$this->arrivingDate) {
+        if (! $this->arrivingDate) {
             $this->arrivingDate = Carbon::now()->format('d-m-Y');
             $this->leavingDate = Carbon::now()->addDays(3)->format('d-m-Y');
         }
         $this->calculateDays();
     }
 
-    public function updatedArrivingDate() { $this->calculateDays(); }
-    public function updatedLeavingDate() { $this->calculateDays(); }
+    public function updatedArrivingDate()
+    {
+        $this->calculateDays();
+    }
+
+    public function updatedLeavingDate()
+    {
+        $this->calculateDays();
+    }
 
     public function calculateDays()
     {
@@ -173,8 +197,9 @@ class ItineraryGenerator extends Component
             $this->validate([
                 'customerName' => 'required',
                 'adultsCount' => 'required|numeric|min:1',
-                'childrenAges.*' => 'required|numeric|min:0|max:17',
+                'childrenAges.*' => 'required|numeric|min:0|max:12',
                 'arrivingDate' => 'required',
+                'arrivingTime' => 'nullable|string',
                 'leavingDate' => 'required',
             ]);
             if (empty($this->selectedAccommodations)) {
@@ -191,11 +216,12 @@ class ItineraryGenerator extends Component
             // Validate total nights
             $accTotalNights = collect($this->selectedAccommodations)->sum('nights');
             if ($accTotalNights > $this->totalNights) {
-                $this->addError('accommodation_nights', 'إجمالي عدد الليالي للفنادق (' . $accTotalNights . ') يتجاوز إجمالي ليالي الرحلة (' . $this->totalNights . ').');
+                $this->addError('accommodation_nights', 'إجمالي عدد الليالي للفنادق ('.$accTotalNights.') يتجاوز إجمالي ليالي الرحلة ('.$this->totalNights.').');
+
                 return;
             }
         }
-        
+
         if ($this->currentStep < 4) {
             $this->currentStep++;
         }
@@ -212,15 +238,16 @@ class ItineraryGenerator extends Component
     {
         $total = 0;
         foreach ($this->selectedAccommodations as $acc) {
-            $total += ((float)($acc['buying_price'] ?? 0) * (int)($acc['nights'] ?? 1));
+            $total += ((float) ($acc['buying_price'] ?? 0) * (int) ($acc['nights'] ?? 1));
         }
         if ($this->includeRentalCar) {
-            $total += ((float)$this->carBuyingPrice * $this->totalDays);
+            $total += ((float) $this->carBuyingPrice * $this->totalDays);
         } else {
             foreach ($this->dailyTours as $day) {
-                $total += (float)($day['buying_price'] ?? 0);
+                $total += (float) ($day['buying_price'] ?? 0);
             }
         }
+
         return $total;
     }
 
@@ -233,6 +260,7 @@ class ItineraryGenerator extends Component
         $dataToSave = [
             'adultsCount' => $this->adultsCount,
             'childrenAges' => $this->childrenAges,
+            'arrivingTime' => $this->arrivingTime,
             'selectedAccommodations' => $this->selectedAccommodations,
             'includeRentalCar' => $this->includeRentalCar,
             'selectedCarId' => $this->selectedCarId,
@@ -275,15 +303,16 @@ class ItineraryGenerator extends Component
 
     public function downloadPdf()
     {
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = Setting::pluck('value', 'key')->toArray();
         $additionalDetails = $settings['voucher_additional_details'] ?? '';
 
         $data = [
             'customerName' => $this->customerName,
             'adultsCount' => $this->adultsCount,
             'childrenAges' => $this->childrenAges,
-            'destinations' => \App\Models\Destination::whereIn('id', $this->destinations)->pluck('name')->toArray(),
+            'destinations' => Destination::whereIn('id', $this->destinations)->pluck('name')->toArray(),
             'arrivingDate' => $this->arrivingDate,
+            'arrivingTime' => $this->arrivingTime,
             'leavingDate' => $this->leavingDate,
             'totalDays' => $this->totalDays,
             'totalNights' => $this->totalNights,
@@ -295,50 +324,50 @@ class ItineraryGenerator extends Component
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
             'additionalDetails' => $additionalDetails,
-            'accommodations' => \App\Models\Accommodation::all(),
-            'tours' => \App\Models\Tour::all(),
-            'cars' => \App\Models\Car::all(),
+            'accommodations' => Accommodation::all(),
+            'tours' => Tour::all(),
+            'cars' => Car::all(),
         ];
 
         $html = view('pdf.voucher', $data)->render();
 
-        $mpdf = new \Mpdf\Mpdf([
+        $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
         ]);
-        
+
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);
-        
+
         $pdfContent = $mpdf->Output('', 'S');
-        
+
         return response()->streamDownload(function () use ($pdfContent) {
             echo $pdfContent;
-        }, 'voucher-' . $this->customerName . '.pdf', [
+        }, 'voucher-'.$this->customerName.'.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
 
     public function sendWhatsApp()
     {
-        $dests = \App\Models\Destination::whereIn('id', $this->destinations)->pluck('name')->implode('، ');
-        
+        $dests = Destination::whereIn('id', $this->destinations)->pluck('name')->implode('، ');
+
         $text = "*مرحباً {$this->customerName}*\n";
         $text .= "إليك تفاصيل رحلتك السياحية الممتعة:\n\n";
-        $text .= "*تاريخ الوصول:* {$this->arrivingDate}\n";
+        $text .= "*تاريخ الوصول:* {$this->arrivingDate}".($this->arrivingTime ? " (الوقت: {$this->arrivingTime})" : '')."\n";
         $text .= "*تاريخ المغادرة:* {$this->leavingDate}\n";
         $text .= "*المدة:* {$this->totalDays} أيام / {$this->totalNights} ليالي\n";
         $text .= "*الوجهات:* {$dests}\n";
-        
-        $childrenText = count($this->childrenAges) > 0 ? " و " . count($this->childrenAges) . " أطفال (أعمارهم: " . implode('، ', $this->childrenAges) . ")\n" : "\n";
-        $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين" . $childrenText;
-        
+
+        $childrenText = count($this->childrenAges) > 0 ? ' و '.count($this->childrenAges).' أطفال (أعمارهم: '.implode('، ', $this->childrenAges).")\n" : "\n";
+        $text .= "*عدد الأفراد:* {$this->adultsCount} بالغين".$childrenText;
+
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
-        
-        $url = "https://api.whatsapp.com/send?text=" . urlencode($text);
-        
+
+        $url = 'https://api.whatsapp.com/send?text='.urlencode($text);
+
         $this->dispatch('open-url', url: $url);
     }
 
@@ -348,7 +377,7 @@ class ItineraryGenerator extends Component
             'accommodations' => Accommodation::all(),
             'tours' => Tour::all(),
             'cars' => Car::all(),
-            'dbDestinations' => \App\Models\Destination::all(),
+            'dbDestinations' => Destination::all(),
         ])->layout('layouts.app');
     }
 }

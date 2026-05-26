@@ -59,7 +59,7 @@
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                             @foreach($childrenAges as $index => $age)
                             <div class="relative flex items-center">
-                                <input type="number" wire:model="childrenAges.{{ $index }}" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8" placeholder="العمر" min="0" max="17">
+                                <input type="number" wire:model="childrenAges.{{ $index }}" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8" placeholder="العمر" min="0" max="12">
                                 <button type="button" wire:click="removeChild({{ $index }})" class="absolute right-2 text-red-500 hover:text-red-700">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
@@ -82,40 +82,51 @@
                     </select>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ الوصول</label>
-                    <div wire:ignore>
-                        <input type="text" 
-                               x-data="{ value: @entangle('arrivingDate').live }" 
-                               x-init="flatpickr($el, {
-                                   dateFormat: 'd-m-Y', 
-                                   allowInput: true,
-                                   defaultDate: value,
-                                   onChange: function(selectedDates, dateStr) { value = dateStr; }
-                               })" 
-                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
-                               dir="ltr" 
-                               placeholder="DD-MM-YYYY">
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ الوصول</label>
+                        <div wire:ignore>
+                            <input type="text" 
+                                   x-data="{ value: @entangle('arrivingDate').live }" 
+                                   x-init="flatpickr($el, {
+                                       dateFormat: 'd-m-Y', 
+                                       allowInput: true,
+                                       defaultDate: value,
+                                       onChange: function(selectedDates, dateStr) { value = dateStr; }
+                                   })" 
+                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
+                                   dir="ltr" 
+                                   placeholder="DD-MM-YYYY">
+                        </div>
+                        @error('arrivingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
-                    @error('arrivingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ المغادرة</label>
-                    <div wire:ignore>
-                        <input type="text" 
-                               x-data="{ value: @entangle('leavingDate').live }" 
-                               x-init="flatpickr($el, {
-                                   dateFormat: 'd-m-Y', 
-                                   allowInput: true,
-                                   defaultDate: value,
-                                   onChange: function(selectedDates, dateStr) { value = dateStr; }
-                               })" 
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">وقت الوصول (اختياري)</label>
+                        <input type="time" 
+                               wire:model="arrivingTime" 
                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
-                               dir="ltr" 
-                               placeholder="DD-MM-YYYY">
+                               dir="ltr">
+                        @error('arrivingTime') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
-                    @error('leavingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ المغادرة</label>
+                        <div wire:ignore>
+                            <input type="text" 
+                                   x-data="{ value: @entangle('leavingDate').live }" 
+                                   x-init="flatpickr($el, {
+                                       dateFormat: 'd-m-Y', 
+                                       allowInput: true,
+                                       defaultDate: value,
+                                       onChange: function(selectedDates, dateStr) { value = dateStr; }
+                                   })" 
+                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
+                                   dir="ltr" 
+                                   placeholder="DD-MM-YYYY">
+                        </div>
+                        @error('leavingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
                 </div>
             </div>
 
