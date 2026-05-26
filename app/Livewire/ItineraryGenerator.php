@@ -433,11 +433,25 @@ class ItineraryGenerator extends Component
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
+            'margin_left' => 15,
+            'margin_right' => 15,
+            'margin_top' => 25,
+            'margin_bottom' => 25,
+            'margin_header' => 10,
+            'margin_footer' => 10,
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
         ]);
 
         $mpdf->SetDirectionality('rtl');
+
+        $letterheadPath = public_path('assets/Letterhead.pdf');
+        if (file_exists($letterheadPath)) {
+            $mpdf->setSourceFile($letterheadPath);
+            $tplId = $mpdf->importPage(1);
+            $mpdf->SetPageTemplate($tplId);
+        }
+
         $mpdf->WriteHTML($html);
 
         $pdfContent = $mpdf->Output('', 'S');
