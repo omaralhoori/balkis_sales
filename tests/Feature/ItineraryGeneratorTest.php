@@ -2,6 +2,7 @@
 
 use App\Livewire\ItineraryGenerator;
 use App\Models\Accommodation;
+use App\Models\Car;
 use App\Models\Destination;
 use App\Models\Itinerary;
 use App\Models\Tour;
@@ -244,4 +245,47 @@ test('it saves itinerary as draft by default and pins it with deposit when pinne
 
     $itinerary->refresh();
     expect($itinerary->data['finalSellingPrice'])->toEqual(1600);
+});
+
+test('it renders video url in voucher if accommodation has one', function () {
+    $destination = Destination::create(['name' => 'أنطاليا']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق أنطاليا الفاخر',
+        'type' => 'فندق',
+        'default_buying_price' => 100,
+        'default_selling_price' => 150,
+        'destination_id' => $destination->id,
+        'video_url' => 'https://youtube.com/watch?v=12345',
+    ]);
+
+    $view = view('pdf.voucher', [
+        'customerName' => 'سليم',
+        'adultsCount' => 2,
+        'childrenAges' => [],
+        'destinations' => [$destination->name],
+        'arrivingDate' => '20-10-2026',
+        'arrivingTime' => '',
+        'leavingDate' => '25-10-2026',
+        'totalDays' => 6,
+        'totalNights' => 5,
+        'selectedAccommodations' => [
+            ['accommodation_id' => $accommodation->id, 'nights' => 5, 'buying_price' => 100, 'note' => ''],
+        ],
+        'includeRentalCar' => false,
+        'selectedCarId' => null,
+        'carBuyingPrice' => 0,
+        'dailyTours' => [],
+        'totalBuyingPrice' => 500,
+        'finalSellingPrice' => 800,
+        'deposit' => null,
+        'remaining' => 800,
+        'additionalDetails' => '',
+        'accommodations' => Accommodation::all(),
+        'tours' => Tour::all(),
+        'cars' => Car::all(),
+    ]);
+
+    $html = $view->render();
+    expect($html)->toContain('https://youtube.com/watch?v=12345');
+    expect($html)->toContain('رابط الفيديو:');
 });

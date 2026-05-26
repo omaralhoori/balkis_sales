@@ -128,6 +128,9 @@
                             @if(!empty($acc['note']))
                                 <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $acc['note'] }}</span>
                             @endif
+                            @if(!empty($accModel->video_url))
+                                <br><span style="font-size:12px;">رابط الفيديو: <a href="{{ $accModel->video_url }}" style="color:#2563eb; text-decoration:underline;" target="_blank">{{ $accModel->video_url }}</a></span>
+                            @endif
                         </td>
                         <td>{{ $accModel->type ?? '' }}</td>
                         <td>{{ $acc['nights'] }}</td>

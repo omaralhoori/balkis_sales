@@ -25,6 +25,11 @@ class AccommodationForm
                 ])->required(),
                 TextInput::make('default_buying_price')->label('سعر الشراء الافتراضي')->numeric()->required(),
                 TextInput::make('default_selling_price')->label('سعر البيع الافتراضي')->numeric()->required(),
+                TextInput::make('video_url')
+                    ->label('رابط الفيديو')
+                    ->url()
+                    ->placeholder('https://example.com/video')
+                    ->nullable(),
                 FileUpload::make('images')->label('الصور')->multiple()->image()->directory('accommodations'),
             ]);
     }
