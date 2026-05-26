@@ -157,7 +157,7 @@
             <!-- اختيار الوجهات بأعلى القسم -->
             <div class="mb-8" wire:ignore>
                 <label class="block text-sm font-medium text-gray-700 mb-2">الوجهات (المدن)</label>
-                <select multiple wire:model="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button'], disabled: {{ !$this->isEditable ? 'true' : 'false' }}})" class="w-full" {{ !$this->isEditable ? 'disabled' : '' }}>
+                <select multiple wire:model.live="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button'], disabled: {{ !$this->isEditable ? 'true' : 'false' }}, onChange: function() { $el.dispatchEvent(new Event('input', { bubbles: true })); }})" class="w-full" {{ !$this->isEditable ? 'disabled' : '' }}>
                     <option value="">اختر الوجهات...</option>
                     @foreach($dbDestinations as $dest)
                         <option value="{{ $dest->id }}">{{ $dest->name }}</option>
