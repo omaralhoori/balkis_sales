@@ -222,7 +222,7 @@ class ItineraryGenerator extends Component
             }
         }
 
-        if ($this->currentStep < 4) {
+        if ($this->currentStep < 3) {
             $this->currentStep++;
         }
     }

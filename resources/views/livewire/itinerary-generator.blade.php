@@ -17,9 +17,9 @@
     <div class="mb-8">
         <div class="flex items-center justify-between relative">
             <div class="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 rounded-full z-0"></div>
-            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 rounded-full z-0 transition-all duration-500" style="width: {{ (($currentStep - 1) / 3) * 100 }}%"></div>
+            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 rounded-full z-0 transition-all duration-500" style="width: {{ (($currentStep - 1) / 2) * 100 }}%"></div>
             
-            @foreach(['البيانات', 'السكن', 'السيارة أو الجدول', 'المراجعة'] as $index => $label)
+            @foreach(['البيانات', 'تفاصيل الحجز', 'المراجعة'] as $index => $label)
             <div class="relative z-10 flex flex-col items-center">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm {{ $currentStep > $index ? 'bg-blue-600 text-white' : ($currentStep == $index + 1 ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-200 text-gray-500') }} transition-all duration-300">
                     {{ $index + 1 }}
@@ -70,16 +70,6 @@
                     @else
                         <div class="text-sm text-gray-400">لا يوجد أطفال مضافين.</div>
                     @endif
-                </div>
-
-                <div class="md:col-span-2" wire:ignore>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">الوجهات (المدن)</label>
-                    <select multiple wire:model="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button']})" class="w-full">
-                        <option value="">اختر الوجهات...</option>
-                        @foreach($dbDestinations as $dest)
-                            <option value="{{ $dest->id }}">{{ $dest->name }}</option>
-                        @endforeach
-                    </select>
                 </div>
 
                 <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -137,141 +127,155 @@
         </div>
         @endif
 
-        <!-- Step 2: Accommodations -->
+        <!-- Step 2: Booking Details -->
         @if($currentStep == 2)
         <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
-            <div class="flex justify-between items-center mb-6 border-b pb-4">
-                <h2 class="text-2xl font-bold text-gray-800">أماكن الإقامة (الفنادق)</h2>
-                <button wire:click="addAccommodation" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors text-sm">
-                    + إضافة سكن
-                </button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">تفاصيل الحجز</h2>
+
+            <!-- اختيار الوجهات بأعلى القسم -->
+            <div class="mb-8" wire:ignore>
+                <label class="block text-sm font-medium text-gray-700 mb-2">الوجهات (المدن)</label>
+                <select multiple wire:model="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button']})" class="w-full">
+                    <option value="">اختر الوجهات...</option>
+                    @foreach($dbDestinations as $dest)
+                        <option value="{{ $dest->id }}">{{ $dest->name }}</option>
+                    @endforeach
+                </select>
             </div>
-            @error('accommodation_nights')
-                <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm border border-red-200">
-                    {{ $message }}
-                </div>
-            @enderror
 
-            @foreach($selectedAccommodations as $index => $acc)
-            <div class="bg-gray-50 p-5 rounded-xl mb-4 border border-gray-200 relative">
-                @if(count($selectedAccommodations) > 1)
-                <button wire:click="removeAccommodation({{ $index }})" class="absolute top-4 left-4 text-red-500 hover:text-red-700 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-                @endif
-                
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="md:col-span-2" wire:ignore>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">اختر السكن</label>
-                        <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" x-data x-init="new TomSelect($el, {create: false})" class="w-full">
-                            <option value="">-- يرجى الاختيار --</option>
-                            @foreach($accommodations as $accommodation)
-                                <option value="{{ $accommodation->id }}">{{ $accommodation->name }} ({{ $accommodation->type }})</option>
-                            @endforeach
-                        </select>
-                        @error('selectedAccommodations.'.$index.'.accommodation_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <!-- أماكن الإقامة (الفنادق) -->
+            <div class="mt-8 border-t pt-8">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <h3 class="text-xl font-bold text-gray-800">أماكن الإقامة (الفنادق)</h3>
+                    <button wire:click="addAccommodation" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors text-sm">
+                        + إضافة سكن
+                    </button>
+                </div>
+                @error('accommodation_nights')
+                    <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm border border-red-200">
+                        {{ $message }}
                     </div>
+                @enderror
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">عدد الليالي</label>
-                        <input type="number" wire:model.live="selectedAccommodations.{{ $index }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1">
-                        @error('selectedAccommodations.'.$index.'.nights') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div class="flex gap-2">
-                        <div class="w-full">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">شراء لليلة ($)</label>
-                            <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظة</label>
-                    <input type="text" wire:model="selectedAccommodations.{{ $index }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)">
-                </div>
-            </div>
-            @endforeach
-            
-            @if(empty($selectedAccommodations))
-                <div class="text-center py-8 text-gray-500">لم يتم إضافة أي سكن بعد.</div>
-            @endif
-        </div>
-        @endif
-
-        <!-- Step 3: Car or Daily Itinerary -->
-        @if($currentStep == 3)
-        <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">السيارة والبرنامج السياحي</h2>
-            
-            <label class="flex items-center cursor-pointer mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">
-                <div class="relative">
-                    <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only">
-                    <div class="block bg-gray-300 w-14 h-8 rounded-full transition-colors {{ $includeRentalCar ? 'bg-blue-500' : '' }}"></div>
-                    <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ $includeRentalCar ? 'translate-x-6' : '' }}"></div>
-                </div>
-                <div class="mr-4 text-gray-700 font-medium">
-                    العميل يريد سيارة سياحية بدون سائق؟ (إذا تم التحديد، سيلغى اختيار الرحلات اليومية)
-                </div>
-            </label>
-
-            @if($includeRentalCar)
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-6 rounded-xl border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">نوع السيارة</label>
-                    <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">-- يرجى الاختيار --</option>
-                        @foreach($cars as $car)
-                            <option value="{{ $car->id }}">{{ $car->car_type }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
-                    <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600">
-                </div>
-                
-                <div class="md:col-span-2 text-sm text-blue-700">
-                    * سيتم حساب تكلفة السيارة لعدد <strong>{{ $totalDays }} أيام</strong> الإجمالية.
-                </div>
-            </div>
-            @else
-            <div class="space-y-4 animate-[fadeIn_0.3s_ease-out] mt-6 border-t pt-6 border-gray-100">
-                <h3 class="text-lg font-bold text-gray-700 mb-4">البرنامج السياحي اليومي (مع سائق / جروب)</h3>
-                @for($i = 1; $i <= $totalDays; $i++)
-                <div class="bg-white border {{ isset($dailyTours[$i]['tour_id']) && $dailyTours[$i]['tour_id'] ? 'border-green-300 shadow-sm' : 'border-gray-200' }} p-4 rounded-xl">
-                    <div class="flex flex-col md:flex-row md:items-center gap-4">
-                        <div class="w-full md:w-1/4">
-                            <div class="font-bold text-blue-800">اليوم {{ $i }}</div>
-                            <div class="text-sm text-gray-500">{{ $dailyTours[$i]['date'] }}</div>
-                        </div>
-                        
-                        <div class="w-full md:w-1/2">
-                            <select wire:model.live="dailyTours.{{ $i }}.tour_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
-                                <option value="">-- اختر جولة سياحية (اختياري) --</option>
-                                @foreach($tours as $tour)
-                                    <option value="{{ $tour->id }}">{{ $tour->name }} ({{ $tour->type }})</option>
+                @foreach($selectedAccommodations as $index => $acc)
+                <div class="bg-gray-50 p-5 rounded-xl mb-4 border border-gray-200 relative">
+                    @if(count($selectedAccommodations) > 1)
+                    <button wire:click="removeAccommodation({{ $index }})" class="absolute top-4 left-4 text-red-500 hover:text-red-700 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                    @endif
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="md:col-span-2" wire:ignore>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">اختر السكن</label>
+                            <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" x-data x-init="new TomSelect($el, {create: false})" class="w-full">
+                                <option value="">-- يرجى الاختيار --</option>
+                                @foreach($accommodations as $accommodation)
+                                    <option value="{{ $accommodation->id }}">{{ $accommodation->name }} ({{ $accommodation->type }})</option>
                                 @endforeach
                             </select>
+                            @error('selectedAccommodations.'.$index.'.accommodation_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
-                        <div class="w-full md:w-1/4 flex gap-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">عدد الليالي</label>
+                            <input type="number" wire:model.live="selectedAccommodations.{{ $index }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1">
+                            @error('selectedAccommodations.'.$index.'.nights') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="flex gap-2">
                             <div class="w-full">
-                                <label class="text-xs text-gray-500 mb-1 block">شراء ($)</label>
-                                <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($dailyTours[$i]['tour_id']) ? 'disabled' : '' }}>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">شراء لليلة ($)</label>
+                                <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100">
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظة</label>
+                        <input type="text" wire:model="selectedAccommodations.{{ $index }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)">
+                    </div>
                 </div>
-                @endfor
+                @endforeach
+                
+                @if(empty($selectedAccommodations))
+                    <div class="text-center py-8 text-gray-500">لم يتم إضافة أي سكن بعد.</div>
+                @endif
             </div>
-            @endif
+
+            <!-- السيارة والبرنامج السياحي -->
+            <div class="mt-8 border-t pt-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 pb-4 border-b">السيارة والبرنامج السياحي</h3>
+                
+                <label class="flex items-center cursor-pointer mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors">
+                    <div class="relative">
+                        <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only">
+                        <div class="block bg-gray-300 w-14 h-8 rounded-full transition-colors {{ $includeRentalCar ? 'bg-blue-500' : '' }}"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ $includeRentalCar ? 'translate-x-6' : '' }}"></div>
+                    </div>
+                    <div class="mr-4 text-gray-700 font-medium">
+                        العميل يريد سيارة سياحية بدون سائق؟ (إذا تم التحديد، سيلغى اختيار الرحلات اليومية)
+                    </div>
+                </label>
+
+                @if($includeRentalCar)
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-6 rounded-xl border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">نوع السيارة</label>
+                        <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">-- يرجى الاختيار --</option>
+                            @foreach($cars as $car)
+                                <option value="{{ $car->id }}">{{ $car->car_type }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
+                        <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600">
+                    </div>
+                    
+                    <div class="md:col-span-2 text-sm text-blue-700">
+                        * سيتم حساب تكلفة السيارة لعدد <strong>{{ $totalDays }} أيام</strong> الإجمالية.
+                    </div>
+                </div>
+                @else
+                <div class="space-y-4 animate-[fadeIn_0.3s_ease-out] mt-6 border-t pt-6 border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4">البرنامج السياحي اليومي (مع سائق / جروب)</h3>
+                    @for($i = 1; $i <= $totalDays; $i++)
+                    <div class="bg-white border {{ isset($dailyTours[$i]['tour_id']) && $dailyTours[$i]['tour_id'] ? 'border-green-300 shadow-sm' : 'border-gray-200' }} p-4 rounded-xl">
+                        <div class="flex flex-col md:flex-row md:items-center gap-4">
+                            <div class="w-full md:w-1/4">
+                                <div class="font-bold text-blue-800">اليوم {{ $i }}</div>
+                                <div class="text-sm text-gray-500">{{ $dailyTours[$i]['date'] }}</div>
+                            </div>
+                            
+                            <div class="w-full md:w-1/2">
+                                <select wire:model.live="dailyTours.{{ $i }}.tour_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                    <option value="">-- اختر جولة سياحية (اختياري) --</option>
+                                    @foreach($tours as $tour)
+                                        <option value="{{ $tour->id }}">{{ $tour->name }} ({{ $tour->type }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="w-full md:w-1/4 flex gap-2">
+                                <div class="w-full">
+                                    <label class="text-xs text-gray-500 mb-1 block">شراء ($)</label>
+                                    <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($dailyTours[$i]['tour_id']) ? 'disabled' : '' }}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endfor
+                </div>
+                @endif
+            </div>
         </div>
         @endif
 
-        <!-- Step 4: Review & Submit -->
-        @if($currentStep == 4)
+        <!-- Step 3: Review & Submit -->
+        @if($currentStep == 3)
         <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-4">
@@ -374,7 +378,7 @@
                 <div></div>
             @endif
 
-            @if($currentStep < 4)
+            @if($currentStep < 3)
                 <button wire:click="nextStep" class="bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md shadow-blue-200 transition-all flex items-center">
                     التالي
                     <svg class="w-5 h-5 mr-1 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
