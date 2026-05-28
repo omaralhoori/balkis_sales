@@ -106,105 +106,69 @@
         </table>
     </div>
 
-    <!-- الأقسام السياحية للرحلة -->
-    @foreach($segments as $segmentIndex => $seg)
-        <div class="section">
-            @php
-                $segDests = \App\Models\Destination::whereIn('id', $seg['destinations'] ?? [])->pluck('name')->toArray();
-                $segDestsStr = implode('، ', $segDests);
-            @endphp
-            <div class="section-title">القسم {{ $segmentIndex + 1 }}: {{ $segDestsStr }} ({{ $seg['nights'] }} ليالي)</div>
-
-            <!-- أماكن الإقامة في هذا القسم -->
-            @php
-                $hasAccs = false;
-                foreach($seg['accommodations'] ?? [] as $acc) {
-                    if(!empty($acc['accommodation_id'])) {
-                        $hasAccs = true;
-                        break;
-                    }
-                }
-            @endphp
-            @if($hasAccs)
-                <h4 style="color: #9d8155; margin-top: 0; margin-bottom: 8px;">الفنادق والإقامة للقسم:</h4>
-                <table style="margin-bottom: 15px;">
+    <!-- تفاصيل البرنامج اليومي -->
+    <div class="section">
+        <div class="section-title">تفاصيل البرنامج اليومي</div>
+        <table>
+            <thead>
+                <tr>
+                    <th width="15%">اليوم والتاريخ</th>
+                    <th width="42%">السكن والإقامة</th>
+                    <th width="43%">البرنامج اليومي والجولات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($dailySlots as $index => $slot)
                     <tr>
-                        <th width="45%">اسم السكن</th>
-                        <th width="30%">النوع</th>
-                        <th width="25%">عدد الليالي</th>
-                    </tr>
-                    @foreach($seg['accommodations'] ?? [] as $acc)
-                        @if(!empty($acc['accommodation_id']))
-                            @php $accModel = $accommodations->find($acc['accommodation_id']); @endphp
-                            <tr>
-                                <td>
-                                    {{ $accModel->name ?? 'غير محدد' }}
-                                    @if(!empty($acc['note']))
-                                        <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $acc['note'] }}</span>
+                        <td style="font-weight: bold; vertical-align: top;">
+                            اليوم {{ $index + 1 }}
+                            <br><span style="color: #6b7280; font-size: 12px;">{{ $slot['date'] }}</span>
+                        </td>
+                        <td style="vertical-align: top;">
+                            @if($index < $totalNights && !empty($slot['accommodation']['accommodation_id']))
+                                @php $accModel = $accommodations->find($slot['accommodation']['accommodation_id']); @endphp
+                                @if($accModel)
+                                    <strong>{{ $accModel->name }}</strong> ({{ $accModel->type ?? '' }})
+                                    @if(!empty($slot['accommodation']['note']))
+                                        <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $slot['accommodation']['note'] }}</span>
                                     @endif
                                     @if(!empty($accModel->video_url))
                                         <br><span style="font-size:12px;">رابط الفيديو: <a href="{{ $accModel->video_url }}" style="color:#2563eb; text-decoration:underline;" target="_blank">{{ $accModel->video_url }}</a></span>
                                     @endif
-                                </td>
-                                <td>{{ $accModel->type ?? '' }}</td>
-                                <td>{{ $acc['nights'] }}</td>
-                            </tr>
-                        @endif
-                    @endforeach
-                </table>
-            @endif
-
-            <!-- البرنامج السياحي اليومي لهذا القسم -->
-            @php
-                $hasTours = false;
-                if (!$includeRentalCar) {
-                    foreach($seg['tours'] ?? [] as $tour) {
-                        if (!empty($tour['tour_id'])) {
-                            $hasTours = true;
-                            break;
-                        }
-                    }
-                }
-            @endphp
-            @if($hasTours)
-                <h4 style="color: #9d8155; margin-top: 10px; margin-bottom: 8px;">البرنامج اليومي للقسم:</h4>
-                <table>
-                    <tr>
-                        <th width="15%">اليوم</th>
-                        <th width="25%">التاريخ</th>
-                        <th width="60%">التفاصيل</th>
-                    </tr>
-                    @foreach($seg['tours'] ?? [] as $tourIndex => $tour)
-                        @php
-                            $startDay = 1;
-                            for ($prevIdx = 0; $prevIdx < $segmentIndex; $prevIdx++) {
-                                $startDay += $segments[$prevIdx]['nights'] ?? 0;
-                            }
-                            $absoluteDayNumber = $startDay + $tourIndex;
-                        @endphp
-                        <tr>
-                            <td style="font-weight: bold;">اليوم {{ $absoluteDayNumber }}</td>
-                            <td>{{ $tour['date'] ?? '' }}</td>
-                            <td>
-                                @if(!empty($tour['tour_id']))
-                                    @php $tourModel = $tours->find($tour['tour_id']); @endphp
-                                    <strong>{{ $tourModel->name ?? '' }} ({{ $tourModel->type ?? '' }})</strong>
-                                    @if(!empty($tourModel->short_description))
-                                        <br><span style="color:#666; font-size:12px;">{{ $tourModel->short_description }}</span>
-                                    @endif
-                                    @if(!empty($tourModel->external_link))
-                                        <br><a href="{{ $tourModel->external_link }}" style="color:#cf9c56; font-size:12px; text-decoration:underline;">مزيد من التفاصيل</a>
+                                @else
+                                    <span style="color: #999;">غير محدد</span>
+                                @endif
+                            @else
+                                <span style="color: #999;">لا يوجد سكن (يوم المغادرة)</span>
+                            @endif
+                        </td>
+                        <td style="vertical-align: top;">
+                            @if(!$includeRentalCar)
+                                @if(!empty($slot['tour']['tour_id']))
+                                    @php $tourModel = $tours->find($slot['tour']['tour_id']); @endphp
+                                    @if($tourModel)
+                                        <strong>{{ $tourModel->name }}</strong> ({{ $tourModel->type ?? '' }})
+                                        @if(!empty($tourModel->short_description))
+                                            <br><span style="color:#666; font-size:12px;">{{ $tourModel->short_description }}</span>
+                                        @endif
+                                        @if(!empty($tourModel->external_link))
+                                            <br><a href="{{ $tourModel->external_link }}" style="color:#cf9c56; font-size:12px; text-decoration:underline;">مزيد من التفاصيل</a>
+                                        @endif
+                                    @else
+                                        <span style="color: #999;">يوم حر / لم يتم تحديد جولة</span>
                                     @endif
                                 @else
                                     <span style="color: #999;">يوم حر / لم يتم تحديد جولة</span>
                                 @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </table>
-            @endif
-        </div>
-    @endforeach
+                            @else
+                                <span style="color: #999;">مشمول ضمن سيارة بدون سائق</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 
     <!-- استئجار سيارة -->
     @if($includeRentalCar && !empty($selectedCarId))
@@ -258,14 +222,12 @@
     @php
         $hasImages = false;
         $accImages = [];
-        foreach($segments as $seg) {
-            foreach($seg['accommodations'] ?? [] as $acc) {
-                if(!empty($acc['accommodation_id'])) {
-                    $accModel = $accommodations->find($acc['accommodation_id']);
-                    if ($accModel && !empty($accModel->images)) {
-                        $accImages[$accModel->name] = $accModel->images;
-                        $hasImages = true;
-                    }
+        foreach($dailySlots as $index => $slot) {
+            if($index < $totalNights && !empty($slot['accommodation']['accommodation_id'])) {
+                $accModel = $accommodations->find($slot['accommodation']['accommodation_id']);
+                if ($accModel && !empty($accModel->images)) {
+                    $accImages[$accModel->name] = $accModel->images;
+                    $hasImages = true;
                 }
             }
         }

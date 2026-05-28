@@ -43,17 +43,29 @@ test('it saves the optional arrivingTime and leavingTime fields in the database'
     actingAs($user);
 
     $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
 
-    Livewire::test(ItineraryGenerator::class)
+    $component = Livewire::test(ItineraryGenerator::class)
         ->set('customerName', 'محمد أحمد')
         ->set('adultsCount', 2)
         ->set('childrenAges', [5, 10])
         ->set('arrivingDate', '20-10-2026')
         ->set('arrivingTime', '14:30')
-        ->set('leavingDate', '27-10-2026')
+        ->set('leavingDate', '27-10-2026') // 7 nights
         ->set('leavingTime', '18:00')
-        ->call('nextStep')
-        ->set('segments.0.destinations', [$destination->id])
+        ->call('nextStep');
+
+    for ($i = 0; $i < 7; $i++) {
+        $component->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $component->call('nextStep')
         ->set('finalSellingPrice', 1500)
         ->call('saveItinerary')
         ->assertHasNoErrors();
@@ -78,9 +90,10 @@ test('it navigates through the 3-step booking details wizard', function () {
         'name' => 'فندق النخبة',
         'type' => '5 نجوم',
         'default_buying_price' => 100,
+        'destination_id' => $destination->id,
     ]);
 
-    Livewire::test(ItineraryGenerator::class)
+    $component = Livewire::test(ItineraryGenerator::class)
         ->assertSet('currentStep', 1)
         // Step 1 validation fails if empty
         ->call('nextStep')
@@ -90,19 +103,22 @@ test('it navigates through the 3-step booking details wizard', function () {
         ->set('adultsCount', 2)
         ->set('childrenAges', [5, 10])
         ->set('arrivingDate', '20-10-2026')
-        ->set('leavingDate', '27-10-2026')
+        ->set('leavingDate', '27-10-2026') // 7 nights
         ->call('nextStep')
         ->assertHasNoErrors()
         ->assertSet('currentStep', 2)
-        // Step 2 validation fails if segments incomplete
+        // Step 2 validation fails if dailySlots accommodations are empty
         ->call('nextStep')
-        ->assertHasErrors(['segments.0.destinations'])
-        // Fill step 2 details
-        ->set('segments.0.destinations', [$destination->id])
-        ->set('segments.0.accommodations.0.accommodation_id', $accommodation->id)
-        ->set('segments.0.accommodations.0.nights', 7)
-        ->set('segments.0.accommodations.0.buying_price', 100)
-        ->call('nextStep')
+        ->assertHasErrors(['dailySlots.0.accommodation.destination_id', 'dailySlots.0.accommodation.accommodation_id']);
+
+    // Fill step 2 details
+    for ($i = 0; $i < 7; $i++) {
+        $component->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id)
+            ->set("dailySlots.{$i}.accommodation.buying_price", 100);
+    }
+
+    $component->call('nextStep')
         ->assertHasNoErrors()
         ->assertSet('currentStep', 3)
         // Ensure nextStep does not exceed step 3
@@ -115,7 +131,7 @@ test('it navigates through the 3-step booking details wizard', function () {
         ->assertSet('currentStep', 1);
 });
 
-test('it filters accommodations and tours reactively by segment destinations', function () {
+test('it filters accommodations and tours reactively by daily slots destinations', function () {
     $user = User::factory()->create();
     actingAs($user);
 
@@ -153,34 +169,34 @@ test('it filters accommodations and tours reactively by segment destinations', f
     $component = Livewire::test(ItineraryGenerator::class)
         ->set('customerName', 'محمد أحمد')
         ->set('arrivingDate', '20-10-2026')
-        ->set('leavingDate', '27-10-2026')
-        ->call('nextStep')
-        ->set('segments.0.destinations', [$destination1->id, $destination2->id]);
+        ->set('leavingDate', '22-10-2026') // 2 nights, 3 days
+        ->call('nextStep');
 
-    $component->set('segments.0.accommodations', [
-        ['accommodation_id' => $accommodation1->id, 'buying_price' => 120, 'nights' => 3, 'note' => ''],
-        ['accommodation_id' => $accommodation2->id, 'buying_price' => 100, 'nights' => 4, 'note' => ''],
-    ]);
+    // Slot 0 (Day 1): Set destination 1, select accommodation 1, select tour 1
+    $component->set('dailySlots.0.accommodation.destination_id', $destination1->id)
+        ->set('dailySlots.0.accommodation.accommodation_id', $accommodation1->id)
+        ->set('dailySlots.0.tour.destination_id', $destination1->id)
+        ->set('dailySlots.0.tour.tour_id', $tour1->id);
 
-    $component->set('segments.0.tours', [
-        0 => ['tour_id' => $tour1->id, 'buying_price' => 150, 'date' => '20-10-2026'],
-        1 => ['tour_id' => $tour2->id, 'buying_price' => 130, 'date' => '21-10-2026'],
-    ]);
+    $component->instance()->updatedDailySlots($accommodation1->id, 'dailySlots.0.accommodation.accommodation_id');
+    $component->instance()->updatedDailySlots($tour1->id, 'dailySlots.0.tour.tour_id');
 
-    // Restrict segment destinations to destination1 only
-    $component->set('segments.0.destinations', [$destination1->id]);
-    $component->instance()->updatedSegments([$destination1->id], 'segments.0.destinations');
+    // Assert that buying prices are set automatically
+    expect($component->get('dailySlots.0.accommodation.buying_price'))->toEqual(120);
+    expect($component->get('dailySlots.0.tour.buying_price'))->toEqual(150);
 
-    // Expect selected accommodations to only contain accommodation1
-    $accommodations = $component->get('segments.0.accommodations');
-    expect(count($accommodations))->toBe(1);
-    expect($accommodations[0]['accommodation_id'])->toBe($accommodation1->id);
+    // If destination changes for Slot 0 to destination 2, it should clear selected accommodation and tour
+    $component->set('dailySlots.0.accommodation.destination_id', $destination2->id);
+    $component->instance()->updatedDailySlots($destination2->id, 'dailySlots.0.accommodation.destination_id');
 
-    // Expect tours to clear tour2 (not in destination1)
-    $tours = $component->get('segments.0.tours');
-    expect($tours[0]['tour_id'])->toBe($tour1->id);
-    expect($tours[1]['tour_id'])->toBe('');
-    expect($tours[1]['buying_price'])->toBe(0);
+    expect($component->get('dailySlots.0.accommodation.accommodation_id'))->toBe('');
+    expect($component->get('dailySlots.0.accommodation.buying_price'))->toEqual(0);
+
+    $component->set('dailySlots.0.tour.destination_id', $destination2->id);
+    $component->instance()->updatedDailySlots($destination2->id, 'dailySlots.0.tour.destination_id');
+
+    expect($component->get('dailySlots.0.tour.tour_id'))->toBe('');
+    expect($component->get('dailySlots.0.tour.buying_price'))->toEqual(0);
 });
 
 test('it saves itinerary as draft by default and pins it with deposit when pinned', function () {
@@ -188,6 +204,12 @@ test('it saves itinerary as draft by default and pins it with deposit when pinne
     actingAs($user);
 
     $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
 
     // 1. Save Itinerary (draft)
     $component = Livewire::test(ItineraryGenerator::class)
@@ -195,9 +217,15 @@ test('it saves itinerary as draft by default and pins it with deposit when pinne
         ->set('adultsCount', 2)
         ->set('childrenAges', [5, 10])
         ->set('arrivingDate', '20-10-2026')
-        ->set('leavingDate', '27-10-2026')
-        ->call('nextStep')
-        ->set('segments.0.destinations', [$destination->id])
+        ->set('leavingDate', '27-10-2026') // 7 nights
+        ->call('nextStep');
+
+    for ($i = 0; $i < 7; $i++) {
+        $component->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $component->call('nextStep')
         ->set('finalSellingPrice', 1500)
         ->call('saveItinerary')
         ->assertHasNoErrors();
@@ -248,6 +276,40 @@ test('it renders video url and voucher notes in voucher PDF', function () {
         'video_url' => 'https://youtube.com/watch?v=12345',
     ]);
 
+    $dailySlots = [];
+    for ($i = 0; $i < 5; $i++) {
+        $dailySlots[] = [
+            'date' => '20-10-2026',
+            'day_number' => $i + 1,
+            'accommodation' => [
+                'destination_id' => $destination->id,
+                'accommodation_id' => $accommodation->id,
+                'buying_price' => 100,
+                'note' => '',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ];
+    }
+    $dailySlots[] = [
+        'date' => '25-10-2026',
+        'day_number' => 6,
+        'accommodation' => [
+            'destination_id' => '',
+            'accommodation_id' => '',
+            'buying_price' => 0,
+            'note' => '',
+        ],
+        'tour' => [
+            'destination_id' => '',
+            'tour_id' => '',
+            'buying_price' => 0,
+        ],
+    ];
+
     $view = view('pdf.voucher', [
         'customerName' => 'سليم',
         'adultsCount' => 2,
@@ -259,16 +321,7 @@ test('it renders video url and voucher notes in voucher PDF', function () {
         'leavingTime' => '',
         'totalDays' => 6,
         'totalNights' => 5,
-        'segments' => [
-            [
-                'destinations' => [$destination->id],
-                'nights' => 5,
-                'accommodations' => [
-                    ['accommodation_id' => $accommodation->id, 'nights' => 5, 'buying_price' => 100, 'note' => ''],
-                ],
-                'tours' => [],
-            ],
-        ],
+        'dailySlots' => $dailySlots,
         'voucherNotes' => 'تنبيه: يرجى إحضار جوازات السفر الأصلية.',
         'includeRentalCar' => false,
         'selectedCarId' => null,
@@ -290,64 +343,86 @@ test('it renders video url and voucher notes in voucher PDF', function () {
     expect($html)->toContain('تواصلوا معنا عبر بلقيس');
 });
 
-test('it sets default accommodation nights to itinerary total nights and decrements previous when adding new one inside segment', function () {
-    $destination = Destination::create(['name' => 'إسطنبول']);
+test('it recalculates daily slots when dates change', function () {
+    $user = User::factory()->create();
+    actingAs($user);
 
     $component = Livewire::test(ItineraryGenerator::class)
         ->set('customerName', 'محمد احمد')
-        ->set('adultsCount', 2)
-        ->set('childrenAges', [])
         ->set('arrivingDate', '20-10-2026')
-        ->set('leavingDate', '25-10-2026') // 5 nights
-        ->call('nextStep'); // Transition to step 2, calls addSegment
+        ->set('leavingDate', '22-10-2026') // 2 nights, 3 days
+        ->call('nextStep');
 
-    // First accommodation nights should default to total segment nights (5)
-    $segments = $component->get('segments');
-    expect(count($segments))->toBe(1);
-    expect($segments[0]['nights'])->toBe(5);
-    expect(count($segments[0]['accommodations']))->toBe(1);
-    expect($segments[0]['accommodations'][0]['nights'])->toBe(5);
+    $slots = $component->get('dailySlots');
+    expect(count($slots))->toBe(3);
+    expect($slots[0]['day_number'])->toBe(1);
+    expect($slots[0]['date'])->toBe('20-10-2026');
+    expect($slots[1]['date'])->toBe('21-10-2026');
+    expect($slots[2]['date'])->toBe('22-10-2026');
 
-    // Adding second accommodation in segment 0 should decrement the first one's nights and set new one's nights to 1
-    $component->call('addAccommodationToSegment', 0);
-    $segments = $component->get('segments');
-    expect(count($segments[0]['accommodations']))->toBe(2);
-    expect($segments[0]['accommodations'][0]['nights'])->toBe(4);
-    expect($segments[0]['accommodations'][1]['nights'])->toBe(1);
+    // Expand itinerary duration (e.g. 4 nights, 5 days)
+    $component->set('leavingDate', '24-10-2026');
+    $component->call('calculateDays');
+
+    $slots = $component->get('dailySlots');
+    expect(count($slots))->toBe(5);
+    expect($slots[4]['day_number'])->toBe(5);
+    expect($slots[4]['date'])->toBe('24-10-2026');
 });
 
-test('it manages segments and validates segment total nights', function () {
+test('it performs backward compatibility migration on mount', function () {
+    $user = User::factory()->create();
+    actingAs($user);
+
     $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
 
-    $component = Livewire::test(ItineraryGenerator::class)
-        ->set('customerName', 'محمد احمد')
-        ->set('adultsCount', 2)
-        ->set('childrenAges', [])
-        ->set('arrivingDate', '20-10-2026')
-        ->set('leavingDate', '25-10-2026') // 5 nights
-        ->call('nextStep'); // 1 segment of 5 nights created
+    // Create an itinerary with segments data
+    $itinerary = Itinerary::create([
+        'user_id' => $user->id,
+        'customer_name' => 'زبون قديم',
+        'destinations' => [$destination->id],
+        'arriving_date' => '2026-10-20',
+        'leaving_date' => '2026-10-25',
+        'total_days' => 6,
+        'total_nights' => 5,
+        'data' => [
+            'adultsCount' => 2,
+            'childrenAges' => [],
+            'arrivingTime' => '',
+            'leavingTime' => '',
+            'includeRentalCar' => false,
+            'selectedCarId' => null,
+            'carBuyingPrice' => 0,
+            'finalSellingPrice' => 1000,
+            'segments' => [
+                [
+                    'destinations' => [$destination->id],
+                    'nights' => 5,
+                    'accommodations' => [
+                        ['accommodation_id' => $accommodation->id, 'nights' => 5, 'buying_price' => 100, 'note' => 'ملاحظة قديمة'],
+                    ],
+                    'tours' => [
+                        ['date' => '20-10-2026', 'tour_id' => '', 'buying_price' => 0],
+                    ],
+                ],
+            ],
+        ],
+    ]);
 
-    // Add another segment
-    // Total nights = 5. Smart segment addition decrements 1 night from first segment (5 -> 4) and sets new segment to 1 night.
-    $component->call('addSegment');
-    $segments = $component->get('segments');
-    expect(count($segments))->toBe(2);
-    expect($segments[0]['nights'])->toBe(4);
-    expect($segments[1]['nights'])->toBe(1);
+    $component = Livewire::test(ItineraryGenerator::class, ['id' => $itinerary->id]);
 
-    // Exceed validation: set segment 1 nights to 2 (total 4+2=6 nights, exceeds 5 nights)
-    $component->set('segments.1.nights', 2);
-    $component->set('segments.0.destinations', [$destination->id]);
-    $component->set('segments.1.destinations', [$destination->id]);
-    $component->set('segments.0.accommodations.0.accommodation_id', 1); // mock id
-    $component->set('segments.1.accommodations.0.accommodation_id', 2); // mock id
-    $component->call('nextStep')
-        ->assertHasErrors(['segment_nights_total']);
-
-    // Fix validation: set segment 1 nights back to 1, validation passes
-    $component->set('segments.1.nights', 1);
-    $component->call('nextStep')
-        ->assertHasNoErrors();
+    // Assert dailySlots property was populated correctly from segments
+    $slots = $component->get('dailySlots');
+    expect(count($slots))->toBe(6);
+    expect($slots[0]['accommodation']['accommodation_id'])->toBe($accommodation->id);
+    expect($slots[0]['accommodation']['note'])->toBe('ملاحظة قديمة');
+    expect($slots[0]['accommodation']['buying_price'])->toBe(100);
 });
 
 test('it downloads voucher PDF with custom footer settings', function () {
@@ -358,14 +433,25 @@ test('it downloads voucher PDF with custom footer settings', function () {
     Setting::updateOrCreate(['key' => 'voucher_footer_height'], ['value' => '45']);
 
     $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
 
     $component = Livewire::test(ItineraryGenerator::class)
         ->set('customerName', 'محمد أحمد')
         ->set('arrivingDate', '20-10-2026')
-        ->set('leavingDate', '25-10-2026')
-        ->call('nextStep')
-        ->set('segments.0.destinations', [$destination->id])
-        ->call('nextStep')
+        ->set('leavingDate', '25-10-2026') // 5 nights
+        ->call('nextStep');
+
+    for ($i = 0; $i < 5; $i++) {
+        $component->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $component->call('nextStep')
         ->set('finalSellingPrice', 1000)
         ->call('downloadPdf')
         ->assertStatus(200);
