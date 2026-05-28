@@ -92,20 +92,16 @@
         <div class="section-title">بيانات الرحلة الأساسية</div>
         <table>
             <tr>
-                <th width="25%">الوجهات</th>
-                <td>{{ implode('، ', $destinations) }}</td>
                 <th width="25%">عدد الأفراد</th>
                 <td>{{ $adultsCount }} بالغين @if(count($childrenAges) > 0) و {{ count($childrenAges) }} أطفال (أعمارهم: {{ implode('، ', $childrenAges) }}) @endif</td>
+                <th width="25%">المدة الإجمالية</th>
+                <td>{{ $totalDays }} أيام / {{ $totalNights }} ليالي</td>
             </tr>
             <tr>
                 <th>تاريخ الوصول</th>
                 <td>{{ $arrivingDate }} @if(!empty($arrivingTime)) (الساعة: {{ $arrivingTime }}) @endif</td>
                 <th>تاريخ المغادرة</th>
                 <td>{{ $leavingDate }} @if(!empty($leavingTime)) (الساعة: {{ $leavingTime }}) @endif</td>
-            </tr>
-            <tr>
-                <th>المدة الإجمالية</th>
-                <td colspan="3">{{ $totalDays }} أيام / {{ $totalNights }} ليالي</td>
             </tr>
         </table>
     </div>
