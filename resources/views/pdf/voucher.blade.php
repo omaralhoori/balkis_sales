@@ -31,7 +31,7 @@
             margin-bottom: 30px;
         }
         .section-title {
-            background-color: #cf9c56;
+            background-color: #49576d;
             color: #fff;
             padding: 8px 15px;
             font-size: 16px;
@@ -101,7 +101,7 @@
                 <th>تاريخ الوصول</th>
                 <td>{{ $arrivingDate }} @if(!empty($arrivingTime)) (الساعة: {{ $arrivingTime }}) @endif</td>
                 <th>تاريخ المغادرة</th>
-                <td>{{ $leavingDate }}</td>
+                <td>{{ $leavingDate }} @if(!empty($leavingTime)) (الساعة: {{ $leavingTime }}) @endif</td>
             </tr>
             <tr>
                 <th>المدة الإجمالية</th>
@@ -110,37 +110,107 @@
         </table>
     </div>
 
-    @if(!empty($selectedAccommodations))
-    <div class="section">
-        <div class="section-title">أماكن الإقامة (الفنادق)</div>
-        <table>
-            <tr>
-                <th>اسم السكن</th>
-                <th>النوع</th>
-                <th>عدد الليالي</th>
-            </tr>
-            @foreach($selectedAccommodations as $acc)
-                @if(!empty($acc['accommodation_id']))
-                    @php $accModel = $accommodations->find($acc['accommodation_id']); @endphp
-                    <tr>
-                        <td>
-                            {{ $accModel->name ?? 'غير محدد' }}
-                            @if(!empty($acc['note']))
-                                <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $acc['note'] }}</span>
-                            @endif
-                            @if(!empty($accModel->video_url))
-                                <br><span style="font-size:12px;">رابط الفيديو: <a href="{{ $accModel->video_url }}" style="color:#2563eb; text-decoration:underline;" target="_blank">{{ $accModel->video_url }}</a></span>
-                            @endif
-                        </td>
-                        <td>{{ $accModel->type ?? '' }}</td>
-                        <td>{{ $acc['nights'] }}</td>
-                    </tr>
-                @endif
-            @endforeach
-        </table>
-    </div>
-    @endif
+    <!-- الأقسام السياحية للرحلة -->
+    @foreach($segments as $segmentIndex => $seg)
+        <div class="section">
+            @php
+                $segDests = \App\Models\Destination::whereIn('id', $seg['destinations'] ?? [])->pluck('name')->toArray();
+                $segDestsStr = implode('، ', $segDests);
+            @endphp
+            <div class="section-title">القسم {{ $segmentIndex + 1 }}: {{ $segDestsStr }} ({{ $seg['nights'] }} ليالي)</div>
 
+            <!-- أماكن الإقامة في هذا القسم -->
+            @php
+                $hasAccs = false;
+                foreach($seg['accommodations'] ?? [] as $acc) {
+                    if(!empty($acc['accommodation_id'])) {
+                        $hasAccs = true;
+                        break;
+                    }
+                }
+            @endphp
+            @if($hasAccs)
+                <h4 style="color: #9d8155; margin-top: 0; margin-bottom: 8px;">الفنادق والإقامة للقسم:</h4>
+                <table style="margin-bottom: 15px;">
+                    <tr>
+                        <th width="45%">اسم السكن</th>
+                        <th width="30%">النوع</th>
+                        <th width="25%">عدد الليالي</th>
+                    </tr>
+                    @foreach($seg['accommodations'] ?? [] as $acc)
+                        @if(!empty($acc['accommodation_id']))
+                            @php $accModel = $accommodations->find($acc['accommodation_id']); @endphp
+                            <tr>
+                                <td>
+                                    {{ $accModel->name ?? 'غير محدد' }}
+                                    @if(!empty($acc['note']))
+                                        <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $acc['note'] }}</span>
+                                    @endif
+                                    @if(!empty($accModel->video_url))
+                                        <br><span style="font-size:12px;">رابط الفيديو: <a href="{{ $accModel->video_url }}" style="color:#2563eb; text-decoration:underline;" target="_blank">{{ $accModel->video_url }}</a></span>
+                                    @endif
+                                </td>
+                                <td>{{ $accModel->type ?? '' }}</td>
+                                <td>{{ $acc['nights'] }}</td>
+                            </tr>
+                        @endif
+                    @endforeach
+                </table>
+            @endif
+
+            <!-- البرنامج السياحي اليومي لهذا القسم -->
+            @php
+                $hasTours = false;
+                if (!$includeRentalCar) {
+                    foreach($seg['tours'] ?? [] as $tour) {
+                        if (!empty($tour['tour_id'])) {
+                            $hasTours = true;
+                            break;
+                        }
+                    }
+                }
+            @endphp
+            @if($hasTours)
+                <h4 style="color: #9d8155; margin-top: 10px; margin-bottom: 8px;">البرنامج اليومي للقسم:</h4>
+                <table>
+                    <tr>
+                        <th width="15%">اليوم</th>
+                        <th width="25%">التاريخ</th>
+                        <th width="60%">التفاصيل</th>
+                    </tr>
+                    @foreach($seg['tours'] ?? [] as $tourIndex => $tour)
+                        @php
+                            $startDay = 1;
+                            for ($prevIdx = 0; $prevIdx < $segmentIndex; $prevIdx++) {
+                                $startDay += $segments[$prevIdx]['nights'] ?? 0;
+                            }
+                            $absoluteDayNumber = $startDay + $tourIndex;
+                        @endphp
+                        <tr>
+                            <td style="font-weight: bold;">اليوم {{ $absoluteDayNumber }}</td>
+                            <td>{{ $tour['date'] ?? '' }}</td>
+                            <td>
+                                @if(!empty($tour['tour_id']))
+                                    @php $tourModel = $tours->find($tour['tour_id']); @endphp
+                                    <strong>{{ $tourModel->name ?? '' }} ({{ $tourModel->type ?? '' }})</strong>
+                                    @if(!empty($tourModel->short_description))
+                                        <br><span style="color:#666; font-size:12px;">{{ $tourModel->short_description }}</span>
+                                    @endif
+                                    @if(!empty($tourModel->external_link))
+                                        <br><a href="{{ $tourModel->external_link }}" style="color:#cf9c56; font-size:12px; text-decoration:underline;">مزيد من التفاصيل</a>
+                                    @endif
+                                @else
+                                    <span style="color: #999;">يوم حر / لم يتم تحديد جولة</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
+            @endif
+        </div>
+    @endforeach
+
+    <!-- استئجار سيارة -->
     @if($includeRentalCar && !empty($selectedCarId))
     <div class="section">
         <div class="section-title">استئجار سيارة</div>
@@ -155,50 +225,15 @@
     </div>
     @endif
 
-    @php
-        $hasTours = false;
-        if (!$includeRentalCar) {
-            foreach($dailyTours as $day) {
-                if (!empty($day['tour_id'])) {
-                    $hasTours = true;
-                    break;
-                }
-            }
-        }
-    @endphp
-    @if($hasTours)
+    <!-- ملاحظات الفاتورة -->
+    @if(!empty($voucherNotes))
     <div class="section">
-        <div class="section-title">البرنامج السياحي اليومي</div>
-        <table>
-            <tr>
-                <th width="15%">اليوم</th>
-                <th width="20%">التاريخ</th>
-                <th width="65%">التفاصيل</th>
-            </tr>
-            @for($i = 1; $i <= $totalDays; $i++)
-                <tr>
-                    <td style="font-weight: bold;">اليوم {{ $i }}</td>
-                    <td>{{ $dailyTours[$i]['date'] ?? '' }}</td>
-                    <td>
-                        @if(!empty($dailyTours[$i]['tour_id']))
-                            @php $tour = $tours->find($dailyTours[$i]['tour_id']); @endphp
-                            <strong>{{ $tour->name ?? '' }} ({{ $tour->type ?? '' }})</strong>
-                            @if(!empty($tour->short_description))
-                                <br><span style="color:#666; font-size:12px;">{{ $tour->short_description }}</span>
-                            @endif
-                            @if(!empty($tour->external_link))
-                                <br><a href="{{ $tour->external_link }}" style="color:#cf9c56; font-size:12px; text-decoration:underline;">مزيد من التفاصيل</a>
-                            @endif
-                        @else
-                            <span style="color: #999;">يوم حر / لم يتم تحديد جولة</span>
-                        @endif
-                    </td>
-                </tr>
-            @endfor
-        </table>
+        <div class="section-title">ملاحظات إضافية</div>
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 6px; white-space: pre-line; font-size: 13px;">{{ $voucherNotes }}</div>
     </div>
     @endif
 
+    <!-- معلومات الدفع والتسعير -->
     @if(!empty($deposit) && $deposit > 0)
         <table style="width: 100%; margin-top: 30px; border: 1px solid #10b981; background-color: #ecfdf5; border-collapse: collapse;">
             <tr>
@@ -223,15 +258,18 @@
         </div>
     @endif
 
+    <!-- صور مرفقة -->
     @php
         $hasImages = false;
         $accImages = [];
-        foreach($selectedAccommodations as $acc) {
-            if(!empty($acc['accommodation_id'])) {
-                $accModel = $accommodations->find($acc['accommodation_id']);
-                if ($accModel && !empty($accModel->images)) {
-                    $accImages[$accModel->name] = $accModel->images;
-                    $hasImages = true;
+        foreach($segments as $seg) {
+            foreach($seg['accommodations'] ?? [] as $acc) {
+                if(!empty($acc['accommodation_id'])) {
+                    $accModel = $accommodations->find($acc['accommodation_id']);
+                    if ($accModel && !empty($accModel->images)) {
+                        $accImages[$accModel->name] = $accModel->images;
+                        $hasImages = true;
+                    }
                 }
             }
         }
@@ -291,10 +329,14 @@
     </div>
     @endif
 
+    <!-- إظهار الfooter المعرف بالsettings بنهاية اخر صفحة في ملف الvoucher بحيث تكون هناك ثابتة -->
     @if(!empty($additionalDetails))
-    <div class="footer">
-        {!! $additionalDetails !!}
-    </div>
+    <htmlpagefooter name="voucherFooter">
+        <div style="border-top: 1px solid #cf9c56; padding-top: 10px; font-size: 11px; text-align: center; color: #6b7280;">
+            {!! $additionalDetails !!}
+        </div>
+    </htmlpagefooter>
+    <sethtmlpagefooter name="voucherFooter" value="1" />
     @endif
 
 </body>

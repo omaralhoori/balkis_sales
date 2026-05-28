@@ -89,7 +89,7 @@
                     @endif
                 </div>
 
-                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ الوصول</label>
                         <div wire:ignore>
@@ -139,6 +139,16 @@
                         </div>
                         @error('leavingDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">وقت المغادرة (اختياري)</label>
+                        <input type="time" 
+                               wire:model="leavingTime" 
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-left" 
+                               dir="ltr"
+                               {{ !$this->isEditable ? 'disabled' : '' }}>
+                        @error('leavingTime') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
                 </div>
             </div>
 
@@ -154,78 +164,273 @@
         <div class="p-8 animate-[fadeIn_0.3s_ease-out]">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">تفاصيل الحجز</h2>
 
-            <!-- اختيار الوجهات بأعلى القسم -->
-            <div class="mb-8" wire:ignore>
-                <label class="block text-sm font-medium text-gray-700 mb-2">الوجهات (المدن)</label>
-                <select multiple wire:model.live="destinations" x-data x-init="new TomSelect($el, {plugins: ['remove_button'], disabled: {{ !$this->isEditable ? 'true' : 'false' }}, onChange: function() { $el.dispatchEvent(new Event('input', { bubbles: true })); }})" class="w-full" {{ !$this->isEditable ? 'disabled' : '' }}>
-                    <option value="">اختر الوجهات...</option>
-                    @foreach($dbDestinations as $dest)
-                        <option value="{{ $dest->id }}">{{ $dest->name }}</option>
-                    @endforeach
-                </select>
+            <!-- ملخص التواريخ والاشخاص في اعلى الصفحة -->
+            <div class="bg-blue-50 rounded-xl p-5 border border-blue-200 mb-8">
+                <h3 class="text-sm font-semibold text-blue-900 uppercase tracking-wider mb-3">ملخص الرحلة</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <div class="text-xs text-blue-600">اسم العميل</div>
+                        <div class="font-bold text-gray-800">{{ $customerName }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-blue-600">تاريخ الوصول</div>
+                        <div class="font-bold text-gray-800">
+                            {{ $arrivingDate }} @if($arrivingTime) <span class="text-xs text-gray-500">({{ $arrivingTime }})</span> @endif
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-blue-600">تاريخ المغادرة</div>
+                        <div class="font-bold text-gray-800">
+                            {{ $leavingDate }} @if($leavingTime) <span class="text-xs text-gray-500">({{ $leavingTime }})</span> @endif
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-blue-600">المدة الإجمالية</div>
+                        <div class="font-bold text-gray-800">{{ $totalDays }} أيام / {{ $totalNights }} ليالي</div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-blue-100 flex gap-6 text-sm text-gray-700">
+                    <div>
+                        <strong>البالغين:</strong> {{ $adultsCount }}
+                    </div>
+                    @if(count($childrenAges) > 0)
+                        <div>
+                            <strong>الأطفال:</strong> {{ count($childrenAges) }} <span class="text-xs text-gray-500">(أعمارهم: {{ implode('، ', $childrenAges) }})</span>
+                        </div>
+                    @endif
+                </div>
             </div>
 
-            <!-- أماكن الإقامة (الفنادق) -->
-            <div class="mt-8 border-t pt-8">
-                <div class="flex justify-between items-center mb-6 border-b pb-4">
-                    <h3 class="text-xl font-bold text-gray-800">أماكن الإقامة (الفنادق)</h3>
-                    @if($this->isEditable)
-                        <button wire:click="addAccommodation" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors text-sm">
-                            + إضافة سكن
+            <!-- Validation Errors for Segments -->
+            @error('segment_nights_total')
+                <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm border border-red-200">
+                    {{ $message }}
+                </div>
+            @enderror
+
+            <!-- الأقسام السياحية -->
+            <div class="space-y-8">
+                @foreach($segments as $segmentIndex => $segment)
+                <div class="bg-white border-2 border-blue-100 rounded-2xl p-6 shadow-sm relative">
+                    <!-- Delete segment button -->
+                    @if($this->isEditable && count($segments) > 1)
+                        <button type="button" wire:click="removeSegment({{ $segmentIndex }})" class="absolute top-4 left-4 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                            حذف القسم
                         </button>
                     @endif
-                </div>
-                @error('accommodation_nights')
-                    <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm border border-red-200">
-                        {{ $message }}
-                    </div>
-                @enderror
 
-                @foreach($selectedAccommodations as $index => $acc)
-                <div class="bg-gray-50 p-5 rounded-xl mb-4 border border-gray-200 relative">
-                    @if($this->isEditable && count($selectedAccommodations) > 1)
-                    <button wire:click="removeAccommodation({{ $index }})" class="absolute top-4 left-4 text-red-500 hover:text-red-700 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    </button>
-                    @endif
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">اختر السكن</label>
-                            <select wire:model.live="selectedAccommodations.{{ $index }}.accommodation_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
-                                <option value="">-- يرجى الاختيار --</option>
-                                @foreach($accommodations as $accommodation)
-                                    <option value="{{ $accommodation->id }}">{{ $accommodation->name }} ({{ $accommodation->type }})</option>
-                                @endforeach
-                            </select>
-                            @error('selectedAccommodations.'.$index.'.accommodation_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                        </div>
+                    <h3 class="text-lg font-bold text-blue-900 mb-6 flex items-center gap-2">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-black">{{ $segmentIndex + 1 }}</span>
+                        القسم السياحي
+                    </h3>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <!-- Destinations in this segment -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">عدد الليالي</label>
-                            <input type="number" wire:model.live="selectedAccommodations.{{ $index }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1" {{ !$this->isEditable ? 'disabled' : '' }}>
-                            @error('selectedAccommodations.'.$index.'.nights') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            <label class="block text-sm font-medium text-gray-700 mb-2">وجهات القسم (المدن)</label>
+                            <div wire:ignore wire:key="segment-destinations-{{ $segmentIndex }}-{{ count($segment['destinations'] ?? []) }}">
+                                <select multiple x-data x-init="new TomSelect($el, {
+                                    plugins: ['remove_button'],
+                                    disabled: {{ !$this->isEditable ? 'true' : 'false' }},
+                                    onChange: function(values) {
+                                        $wire.set('segments.{{ $segmentIndex }}.destinations', Array.from(values), true);
+                                    }
+                                })" class="w-full">
+                                    @foreach($dbDestinations as $dest)
+                                        <option value="{{ $dest->id }}" {{ in_array($dest->id, $segment['destinations'] ?? []) ? 'selected' : '' }}>{{ $dest->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @error('segments.'.$segmentIndex.'.destinations') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
-                        <div class="flex gap-2">
-                            <div class="w-full">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">شراء لليلة ($)</label>
-                                <input type="number" step="0.01" wire:model.live="selectedAccommodations.{{ $index }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ !$this->isEditable ? 'disabled' : '' }}>
+                        <!-- Segment Nights -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">عدد ليالي هذا القسم</label>
+                            <input type="number" wire:model.live="segments.{{ $segmentIndex }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="1" {{ !$this->isEditable ? 'disabled' : '' }}>
+                            @error('segments.'.$segmentIndex.'.nights') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <!-- Accommodations in this segment -->
+                    <div class="mt-6 border-t pt-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-bold text-gray-800">أماكن الإقامة (الفنادق) للقسم</h4>
+                            @if($this->isEditable)
+                                <button type="button" wire:click="addAccommodationToSegment({{ $segmentIndex }})" class="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                                    + إضافة سكن للقسم
+                                </button>
+                            @endif
+                        </div>
+
+                        @error('segments.'.$segmentIndex.'.accommodation_nights')
+                            <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-xs border border-red-200">
+                                {{ $message }}
+                            </div>
+                        @enderror
+
+                        @foreach($segment['accommodations'] ?? [] as $accIndex => $acc)
+                        <div class="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 relative">
+                            @if($this->isEditable && count($segment['accommodations'] ?? []) > 1)
+                                <button type="button" wire:click="removeAccommodationFromSegment({{ $segmentIndex }}, {{ $accIndex }})" class="absolute top-4 left-4 text-red-500 hover:text-red-700 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            @endif
+
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">اختر السكن</label>
+                                    @php
+                                        $segDests = $segment['destinations'] ?? [];
+                                        $filteredAccs = \App\Models\Accommodation::whereIn('destination_id', $segDests)->get();
+                                        $accOptions = $filteredAccs->map(fn($item) => [
+                                            'id' => $item->id,
+                                            'name' => $item->name . ' (' . $item->type . ')',
+                                        ])->toArray();
+                                        $selectedAccModel = !empty($acc['accommodation_id']) ? $filteredAccs->firstWhere('id', $acc['accommodation_id']) : null;
+                                        $selectedLabel = $selectedAccModel ? $selectedAccModel->name . ' (' . $selectedAccModel->type . ')' : '-- اختر السكن --';
+                                    @endphp
+                                    <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        options: {{ json_encode($accOptions) }},
+                                        get hasMatches() {
+                                            if (!this.search) return true;
+                                            return this.options.some(o => o.name.toLowerCase().includes(this.search.toLowerCase()));
+                                        }
+                                    }" class="relative" wire:key="acc-select-{{ $segmentIndex }}-{{ $accIndex }}-{{ $acc['accommodation_id'] ?? '' }}-{{ implode('-', $segDests) }}">
+                                        <button type="button" @click="open = !open" {{ !$this->isEditable ? 'disabled' : '' }} class="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-right cursor-default focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center text-sm disabled:bg-gray-100 disabled:text-gray-500">
+                                            <span>{{ $selectedLabel }}</span>
+                                            <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                                                <path d="M7 7l3-3 3 3m0 6l-3 3-3-3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                        
+                                        <div x-show="open" @click.outside="open = false" x-cloak class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                            <div class="p-2 sticky top-0 bg-white border-b">
+                                                <input type="text" x-model="search" placeholder="ابحث عن فندق..." class="w-full px-3 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            </div>
+                                            <div class="max-h-48 overflow-y-auto">
+                                                @foreach($accOptions as $option)
+                                                    <div @click="$wire.set('segments.{{ $segmentIndex }}.accommodations.{{ $accIndex }}.accommodation_id', '{{ $option['id'] }}', true); open = false; search = '';" 
+                                                         x-show="!search || '{{ strtolower(addslashes($option['name'])) }}'.includes(search.toLowerCase())"
+                                                         class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-600 hover:text-white text-gray-900 {{ ($acc['accommodation_id'] ?? '') == $option['id'] ? 'bg-blue-50 font-semibold' : '' }}">
+                                                        <span class="block truncate">{{ $option['name'] }}</span>
+                                                    </div>
+                                                @endforeach
+                                                <div x-show="!hasMatches" class="text-gray-500 text-sm p-3 text-center">لا توجد نتائج</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @error('segments.'.$segmentIndex.'.accommodations.'.$accIndex.'.accommodation_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">عدد الليالي</label>
+                                    <input type="number" wire:model.live="segments.{{ $segmentIndex }}.accommodations.{{ $accIndex }}.nights" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" min="1" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                    @error('segments.'.$segmentIndex.'.accommodations.'.$accIndex.'.nights') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">شراء لليلة ($)</label>
+                                    <input type="number" step="0.01" wire:model.live="segments.{{ $segmentIndex }}.accommodations.{{ $accIndex }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <label class="block text-xs font-medium text-gray-500 mb-1">ملاحظة</label>
+                                <input type="text" wire:model="segments.{{ $segmentIndex }}.accommodations.{{ $accIndex }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)" {{ !$this->isEditable ? 'disabled' : '' }}>
                             </div>
                         </div>
+                        @endforeach
                     </div>
-                    
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظة</label>
-                        <input type="text" wire:model="selectedAccommodations.{{ $index }}.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أضف ملاحظة حول هذا السكن (اختياري)" {{ !$this->isEditable ? 'disabled' : '' }}>
+
+                    <!-- Daily Tours in this segment (only if rental car is disabled) -->
+                    @if(!$includeRentalCar)
+                    <div class="mt-6 border-t pt-6">
+                        <h4 class="font-bold text-gray-800 mb-4">البرنامج السياحي اليومي للقسم</h4>
+                        <div class="space-y-3">
+                            @foreach($segment['tours'] ?? [] as $tourIndex => $tour)
+                            <div class="bg-gray-50 border {{ !empty($tour['tour_id']) ? 'border-green-300 shadow-sm' : 'border-gray-200' }} p-4 rounded-xl">
+                                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                                    <div class="w-full md:w-1/4">
+                                        @php
+                                            $startDay = 1;
+                                            for ($prevIdx = 0; $prevIdx < $segmentIndex; $prevIdx++) {
+                                                $startDay += $this->segments[$prevIdx]['nights'] ?? 0;
+                                            }
+                                            $absoluteDayNumber = $startDay + $tourIndex;
+                                        @endphp
+                                        <div class="font-bold text-blue-800">اليوم {{ $absoluteDayNumber }}</div>
+                                        <div class="text-xs text-gray-500">{{ $tour['date'] }}</div>
+                                    </div>
+
+                                    <div class="w-full md:w-1/2">
+                                        @php
+                                            $filteredTours = \App\Models\Tour::whereIn('destination_id', $segDests)->get();
+                                            $tourOptions = $filteredTours->map(fn($item) => [
+                                                'id' => $item->id,
+                                                'name' => $item->name . ' (' . $item->type . ')',
+                                            ])->toArray();
+                                            $selectedTourModel = !empty($tour['tour_id']) ? $filteredTours->firstWhere('id', $tour['tour_id']) : null;
+                                            $selectedTourLabel = $selectedTourModel ? $selectedTourModel->name . ' (' . $selectedTourModel->type . ')' : '-- اختر جولة سياحية (اختياري) --';
+                                        @endphp
+                                        <div x-data="{
+                                            open: false,
+                                            search: '',
+                                            options: {{ json_encode($tourOptions) }},
+                                            get hasMatches() {
+                                                if (!this.search) return true;
+                                                return this.options.some(o => o.name.toLowerCase().includes(this.search.toLowerCase()));
+                                            }
+                                        }" class="relative" wire:key="tour-select-{{ $segmentIndex }}-{{ $tourIndex }}-{{ $tour['tour_id'] ?? '' }}-{{ implode('-', $segDests) }}">
+                                            <button type="button" @click="open = !open" {{ !$this->isEditable ? 'disabled' : '' }} class="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-right cursor-default focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center text-sm disabled:bg-gray-100 disabled:text-gray-500">
+                                                <span>{{ $selectedTourLabel }}</span>
+                                                <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                                                    <path d="M7 7l3-3 3 3m0 6l-3 3-3-3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </button>
+                                            
+                                            <div x-show="open" @click.outside="open = false" x-cloak class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                                <div class="p-2 sticky top-0 bg-white border-b">
+                                                    <input type="text" x-model="search" placeholder="ابحث عن جولة..." class="w-full px-3 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div class="max-h-48 overflow-y-auto">
+                                                    @foreach($tourOptions as $option)
+                                                        <div @click="$wire.set('segments.{{ $segmentIndex }}.tours.{{ $tourIndex }}.tour_id', '{{ $option['id'] }}', true); open = false; search = '';" 
+                                                             x-show="!search || '{{ strtolower(addslashes($option['name'])) }}'.includes(search.toLowerCase())"
+                                                             class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-600 hover:text-white text-gray-900 {{ ($tour['tour_id'] ?? '') == $option['id'] ? 'bg-blue-50 font-semibold' : '' }}">
+                                                            <span class="block truncate">{{ $option['name'] }}</span>
+                                                        </div>
+                                                    @endforeach
+                                                    <div x-show="!hasMatches" class="text-gray-500 text-sm p-3 text-center">لا توجد نتائج</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="w-full md:w-1/4">
+                                        <label class="text-xs text-gray-500 mb-1 block">شراء ($)</label>
+                                        <input type="number" step="0.01" wire:model.live="segments.{{ $segmentIndex }}.tours.{{ $tourIndex }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($tour['tour_id']) || !$this->isEditable ? 'disabled' : '' }}>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
                     </div>
+                    @endif
                 </div>
                 @endforeach
-                
-                @if(empty($selectedAccommodations))
-                    <div class="text-center py-8 text-gray-500">لم يتم إضافة أي سكن بعد.</div>
-                @endif
             </div>
+
+            <!-- Add Segment Button -->
+            @if($this->isEditable)
+                <div class="flex justify-center mt-6">
+                    <button type="button" wire:click="addSegment" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-md shadow-blue-200 transition-all flex items-center gap-2">
+                        + إضافة قسم سياحي جديد
+                    </button>
+                </div>
+            @endif
 
             <!-- السيارة والبرنامج السياحي -->
             <div class="mt-8 border-t pt-8">
@@ -263,37 +468,14 @@
                         * سيتم حساب تكلفة السيارة لعدد <strong>{{ $totalDays }} أيام</strong> الإجمالية.
                     </div>
                 </div>
-                @else
-                <div class="space-y-4 animate-[fadeIn_0.3s_ease-out] mt-6 border-t pt-6 border-gray-100">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4">البرنامج السياحي اليومي (مع سائق / جروب)</h3>
-                    @for($i = 1; $i <= $totalDays; $i++)
-                    <div class="bg-white border {{ isset($dailyTours[$i]['tour_id']) && $dailyTours[$i]['tour_id'] ? 'border-green-300 shadow-sm' : 'border-gray-200' }} p-4 rounded-xl">
-                        <div class="flex flex-col md:flex-row md:items-center gap-4">
-                            <div class="w-full md:w-1/4">
-                                <div class="font-bold text-blue-800">اليوم {{ $i }}</div>
-                                <div class="text-sm text-gray-500">{{ $dailyTours[$i]['date'] }}</div>
-                            </div>
-                            
-                            <div class="w-full md:w-1/2">
-                                <select wire:model.live="dailyTours.{{ $i }}.tour_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" {{ !$this->isEditable ? 'disabled' : '' }}>
-                                    <option value="">-- اختر جولة سياحية (اختياري) --</option>
-                                    @foreach($tours as $tour)
-                                        <option value="{{ $tour->id }}">{{ $tour->name }} ({{ $tour->type }})</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="w-full md:w-1/4 flex gap-2">
-                                <div class="w-full">
-                                    <label class="text-xs text-gray-500 mb-1 block">شراء ($)</label>
-                                    <input type="number" step="0.01" wire:model.live="dailyTours.{{ $i }}.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-100" {{ empty($dailyTours[$i]['tour_id']) || !$this->isEditable ? 'disabled' : '' }}>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endfor
-                </div>
                 @endif
+            </div>
+
+            <!-- ملاحظة اسفل صفحة تفاصيل الحجز تظهر اسفل ملف voucher -->
+            <div class="mt-8 border-t pt-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">ملاحظات إضافية (تظهر في الفاتورة)</h3>
+                <p class="text-sm text-gray-500 mb-3">تظهر هذه الملاحظات في نهاية ملف voucher المطبوع.</p>
+                <textarea wire:model="voucherNotes" rows="4" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="أدخل أي ملاحظات ترغب في ظهورها بأسفل الفاتورة للعميل..." {{ !$this->isEditable ? 'disabled' : '' }}></textarea>
             </div>
         </div>
         @endif
@@ -313,18 +495,33 @@
                 <h3 class="font-bold text-lg border-b pb-2 mb-4 text-gray-700">ملخص إجمالي الشراء الداخلي</h3>
                 
                 <div class="space-y-3">
-                    @php $accTotal = 0; @endphp
-                    @foreach($selectedAccommodations as $acc)
-                        @if($acc['accommodation_id'])
-                            @php 
-                                $accModel = $accommodations->find($acc['accommodation_id']);
-                                $lineTotal = $acc['buying_price'] * $acc['nights'];
-                                $accTotal += $lineTotal;
-                            @endphp
-                            <div class="flex justify-between text-sm text-gray-500">
-                                <span>سكن: {{ $accModel->name ?? '' }} ({{ $acc['nights'] }} ليالي)</span>
-                                <span>${{ number_format($lineTotal, 2) }}</span>
-                            </div>
+                    @foreach($segments as $segmentIndex => $seg)
+                        @foreach($seg['accommodations'] ?? [] as $acc)
+                            @if(!empty($acc['accommodation_id']))
+                                @php 
+                                    $accModel = \App\Models\Accommodation::find($acc['accommodation_id']);
+                                    $lineTotal = $acc['buying_price'] * $acc['nights'];
+                                @endphp
+                                <div class="flex justify-between text-sm text-gray-500">
+                                    <span>سكن: {{ $accModel->name ?? '' }} (القسم {{ $segmentIndex + 1 }} - {{ $acc['nights'] }} ليالي)</span>
+                                    <span>${{ number_format($lineTotal, 2) }}</span>
+                                </div>
+                            @endif
+                        @endforeach
+
+                        @if(!$includeRentalCar)
+                            @foreach($seg['tours'] ?? [] as $tourIndex => $tour)
+                                @if(!empty($tour['tour_id']))
+                                    @php 
+                                        $tourModel = \App\Models\Tour::find($tour['tour_id']);
+                                        $tourPrice = $tour['buying_price'] ?? 0;
+                                    @endphp
+                                    <div class="flex justify-between text-sm text-gray-500">
+                                        <span>جولة: {{ $tourModel->name ?? '' }} ({{ $tour['date'] }})</span>
+                                        <span>${{ number_format($tourPrice, 2) }}</span>
+                                    </div>
+                                @endif
+                            @endforeach
                         @endif
                     @endforeach
 
@@ -337,21 +534,6 @@
                             <span>سيارة بدون سائق: {{ $carModel->car_type ?? '' }} ({{ $totalDays }} أيام)</span>
                             <span>${{ number_format($carTotal, 2) }}</span>
                         </div>
-                    @else
-
-                    @php $toursTotal = 0; @endphp
-                    @foreach($dailyTours as $day)
-                        @if(!empty($day['tour_id']))
-                            @php $toursTotal += $day['buying_price']; @endphp
-                        @endif
-                    @endforeach
-                    
-                    @if($toursTotal > 0)
-                        <div class="flex justify-between text-sm text-gray-500 border-t pt-3 border-gray-200">
-                            <span>جولات سياحية (إجمالي)</span>
-                            <span>${{ number_format($toursTotal, 2) }}</span>
-                        </div>
-                    @endif
                     @endif
                 </div>
 
