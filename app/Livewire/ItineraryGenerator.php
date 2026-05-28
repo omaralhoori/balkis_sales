@@ -40,8 +40,8 @@ class ItineraryGenerator extends Component
 
     public int $totalNights = 0;
 
-    // Step 2: Booking Details (Segments)
-    public array $segments = [];
+    // Step 2: Booking Details (Daily Slots)
+    public array $dailySlots = [];
 
     public string $voucherNotes = '';
 
@@ -66,17 +66,17 @@ class ItineraryGenerator extends Component
             if (Auth::user()?->email !== config('auth.super_admin_email')) {
                 $query->where('user_id', Auth::id());
             }
-            $itinerary = $query->find($id);
-            if ($itinerary) {
-                $this->itineraryId = $itinerary->id;
-                $this->customerName = $itinerary->customer_name;
-                $this->destinations = $itinerary->destinations ?? [];
-                $this->arrivingDate = $itinerary->arriving_date->format('d-m-Y');
-                $this->leavingDate = $itinerary->leaving_date->format('d-m-Y');
-                $this->isPinned = $itinerary->is_pinned;
-                $this->deposit = $itinerary->deposit;
+            $it = $query->find($id);
+            if ($it) {
+                $this->itineraryId = $it->id;
+                $this->customerName = $it->customer_name;
+                $this->destinations = $it->destinations ?? [];
+                $this->arrivingDate = $it->arriving_date->format('d-m-Y');
+                $this->leavingDate = $it->leaving_date->format('d-m-Y');
+                $this->isPinned = $it->is_pinned;
+                $this->deposit = $it->deposit;
 
-                $data = $itinerary->data;
+                $data = $it->data;
                 $this->adultsCount = $data['adultsCount'] ?? 1;
                 $this->childrenAges = $data['childrenAges'] ?? [];
                 $this->arrivingTime = $data['arrivingTime'] ?? '';
@@ -87,23 +87,15 @@ class ItineraryGenerator extends Component
                 $this->carBuyingPrice = $data['carBuyingPrice'] ?? 0;
                 $this->finalSellingPrice = $data['finalSellingPrice'] ?? 0;
 
-                // Load segments with backward compatibility fallback
-                if (isset($data['segments'])) {
-                    $this->segments = $data['segments'];
+                // Load daily slots with backward compatibility fallbacks
+                if (isset($data['dailySlots'])) {
+                    $this->dailySlots = $data['dailySlots'];
+                } elseif (isset($data['segments'])) {
+                    $this->migrateSegmentsToDailySlots($data['segments']);
                 } else {
                     $oldAccs = $data['selectedAccommodations'] ?? [];
-                    $oldTours = [];
-                    if (isset($data['dailyTours'])) {
-                        $oldTours = array_values($data['dailyTours']);
-                    }
-                    $this->segments = [
-                        [
-                            'destinations' => $this->destinations,
-                            'nights' => $this->totalNights,
-                            'accommodations' => $oldAccs,
-                            'tours' => $oldTours,
-                        ],
-                    ];
+                    $oldTours = isset($data['dailyTours']) ? array_values($data['dailyTours']) : [];
+                    $this->migrateOldFormatToDailySlots($oldAccs, $oldTours);
                 }
             }
         }
@@ -113,6 +105,121 @@ class ItineraryGenerator extends Component
             $this->leavingDate = Carbon::now()->addDays(3)->format('d-m-Y');
         }
         $this->calculateDays();
+    }
+
+    protected function migrateSegmentsToDailySlots(array $segments)
+    {
+        try {
+            $startDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->startOfDay();
+        } catch (\Exception $e) {
+            $startDate = Carbon::now()->startOfDay();
+        }
+
+        $dailySlots = [];
+        $accommodationsList = [];
+        $toursList = [];
+
+        foreach ($segments as $seg) {
+            $destId = $seg['destinations'][0] ?? '';
+            foreach ($seg['accommodations'] ?? [] as $acc) {
+                $accNights = (int) ($acc['nights'] ?? 1);
+                for ($n = 0; $n < $accNights; $n++) {
+                    $accModel = ! empty($acc['accommodation_id']) ? Accommodation::find($acc['accommodation_id']) : null;
+                    $accommodationsList[] = [
+                        'destination_id' => $accModel ? $accModel->destination_id : $destId,
+                        'accommodation_id' => $acc['accommodation_id'] ?? '',
+                        'buying_price' => $acc['buying_price'] ?? 0,
+                        'note' => $acc['note'] ?? '',
+                    ];
+                }
+            }
+            foreach ($seg['tours'] ?? [] as $tour) {
+                $tourModel = ! empty($tour['tour_id']) ? Tour::find($tour['tour_id']) : null;
+                $toursList[$tour['date']] = [
+                    'destination_id' => $tourModel ? $tourModel->destination_id : $destId,
+                    'tour_id' => $tour['tour_id'] ?? '',
+                    'buying_price' => $tour['buying_price'] ?? 0,
+                ];
+            }
+        }
+
+        $totalDays = $this->totalDays > 0 ? $this->totalDays : 1;
+        for ($d = 0; $d < $totalDays; $d++) {
+            $dateStr = $startDate->copy()->addDays($d)->format('d-m-Y');
+            $dailySlots[] = [
+                'date' => $dateStr,
+                'day_number' => $d + 1,
+                'accommodation' => $accommodationsList[$d] ?? [
+                    'destination_id' => '',
+                    'accommodation_id' => '',
+                    'buying_price' => 0,
+                    'note' => '',
+                ],
+                'tour' => $toursList[$dateStr] ?? [
+                    'destination_id' => '',
+                    'tour_id' => '',
+                    'buying_price' => 0,
+                ],
+            ];
+        }
+
+        $this->dailySlots = $dailySlots;
+    }
+
+    protected function migrateOldFormatToDailySlots(array $oldAccs, array $oldTours)
+    {
+        try {
+            $startDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->startOfDay();
+        } catch (\Exception $e) {
+            $startDate = Carbon::now()->startOfDay();
+        }
+
+        $dailySlots = [];
+        $accommodationsList = [];
+        foreach ($oldAccs as $acc) {
+            $accNights = (int) ($acc['nights'] ?? 1);
+            for ($n = 0; $n < $accNights; $n++) {
+                $accModel = ! empty($acc['accommodation_id']) ? Accommodation::find($acc['accommodation_id']) : null;
+                $accommodationsList[] = [
+                    'destination_id' => $accModel ? $accModel->destination_id : '',
+                    'accommodation_id' => $acc['accommodation_id'] ?? '',
+                    'buying_price' => $acc['buying_price'] ?? 0,
+                    'note' => $acc['note'] ?? '',
+                ];
+            }
+        }
+
+        $toursList = [];
+        foreach ($oldTours as $tour) {
+            $tourModel = ! empty($tour['tour_id']) ? Tour::find($tour['tour_id']) : null;
+            $toursList[$tour['date']] = [
+                'destination_id' => $tourModel ? $tourModel->destination_id : '',
+                'tour_id' => $tour['tour_id'] ?? '',
+                'buying_price' => $tour['buying_price'] ?? 0,
+            ];
+        }
+
+        $totalDays = $this->totalDays > 0 ? $this->totalDays : 1;
+        for ($d = 0; $d < $totalDays; $d++) {
+            $dateStr = $startDate->copy()->addDays($d)->format('d-m-Y');
+            $dailySlots[] = [
+                'date' => $dateStr,
+                'day_number' => $d + 1,
+                'accommodation' => $accommodationsList[$d] ?? [
+                    'destination_id' => '',
+                    'accommodation_id' => '',
+                    'buying_price' => 0,
+                    'note' => '',
+                ],
+                'tour' => $toursList[$dateStr] ?? [
+                    'destination_id' => '',
+                    'tour_id' => '',
+                    'buying_price' => 0,
+                ],
+            ];
+        }
+
+        $this->dailySlots = $dailySlots;
     }
 
     public function updatedArrivingDate()
@@ -139,86 +246,44 @@ class ItineraryGenerator extends Component
                     $this->totalDays = 1;
                 }
 
-                // Adjust segment nights to fit the new total nights
-                if (empty($this->segments)) {
-                    $this->segments = [
-                        [
-                            'destinations' => $this->destinations,
-                            'nights' => $this->totalNights,
-                            'accommodations' => [
-                                ['accommodation_id' => '', 'buying_price' => 0, 'nights' => $this->totalNights, 'note' => ''],
-                            ],
-                            'tours' => [],
-                        ],
-                    ];
-                } else {
-                    $totalAllocated = collect($this->segments)->sum('nights');
-                    if ($totalAllocated !== $this->totalNights) {
-                        $diff = $this->totalNights - $totalAllocated;
-                        $lastIdx = count($this->segments) - 1;
-                        $this->segments[$lastIdx]['nights'] = max(1, $this->segments[$lastIdx]['nights'] + $diff);
-
-                        // Force shrink segments from right to left if exceeding
-                        $totalAllocated = collect($this->segments)->sum('nights');
-                        if ($totalAllocated > $this->totalNights) {
-                            for ($i = count($this->segments) - 1; $i >= 0; $i--) {
-                                $currentAllocated = collect($this->segments)->sum('nights');
-                                if ($currentAllocated <= $this->totalNights) {
-                                    break;
-                                }
-                                $exceeding = $currentAllocated - $this->totalNights;
-                                $canReduce = $this->segments[$i]['nights'] - 1;
-                                $reduceBy = min($exceeding, $canReduce);
-                                $this->segments[$i]['nights'] -= $reduceBy;
-                            }
-                        }
-                    }
-                }
-
-                // Keep single accommodations nights in sync with segment nights
-                foreach ($this->segments as $index => $seg) {
-                    if (count($this->segments[$index]['accommodations'] ?? []) === 1) {
-                        $this->segments[$index]['accommodations'][0]['nights'] = (int) $this->segments[$index]['nights'];
-                    }
-                }
-
-                $this->recalculateSegmentDates();
+                $this->recalculateDailySlots();
             } catch (\Exception $e) {
                 // Ignore parsing errors temporarily if user is typing
             }
         }
     }
 
-    public function recalculateSegmentDates()
+    public function recalculateDailySlots()
     {
         if (! $this->arrivingDate) {
             return;
         }
         try {
-            $currentDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->startOfDay();
-            $totalSegments = count($this->segments);
+            $startDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->startOfDay();
+            $newSlots = [];
 
-            for ($i = 0; $i < $totalSegments; $i++) {
-                $segNights = (int) ($this->segments[$i]['nights'] ?? 0);
-                $daysCount = $segNights;
-                if ($i === $totalSegments - 1) {
-                    $daysCount = $segNights + 1;
-                }
+            for ($d = 0; $d < $this->totalDays; $d++) {
+                $dateStr = $startDate->copy()->addDays($d)->format('d-m-Y');
+                $existingSlot = $this->dailySlots[$d] ?? null;
 
-                $newTours = [];
-                for ($d = 0; $d < $daysCount; $d++) {
-                    $dateStr = $currentDate->copy()->addDays($d)->format('d-m-Y');
-                    $existingTour = $this->segments[$i]['tours'][$d] ?? null;
-                    $newTours[] = [
-                        'tour_id' => $existingTour['tour_id'] ?? '',
-                        'buying_price' => $existingTour['buying_price'] ?? 0,
-                        'date' => $dateStr,
-                    ];
-                }
-
-                $this->segments[$i]['tours'] = $newTours;
-                $currentDate->addDays($segNights);
+                $newSlots[] = [
+                    'date' => $dateStr,
+                    'day_number' => $d + 1,
+                    'accommodation' => [
+                        'destination_id' => $existingSlot['accommodation']['destination_id'] ?? '',
+                        'accommodation_id' => $existingSlot['accommodation']['accommodation_id'] ?? '',
+                        'buying_price' => $existingSlot['accommodation']['buying_price'] ?? 0,
+                        'note' => $existingSlot['accommodation']['note'] ?? '',
+                    ],
+                    'tour' => [
+                        'destination_id' => $existingSlot['tour']['destination_id'] ?? '',
+                        'tour_id' => $existingSlot['tour']['tour_id'] ?? '',
+                        'buying_price' => $existingSlot['tour']['buying_price'] ?? 0,
+                    ],
+                ];
             }
+
+            $this->dailySlots = $newSlots;
         } catch (\Exception $e) {
             // Ignore date parsing issues
         }
@@ -235,153 +300,57 @@ class ItineraryGenerator extends Component
         $this->childrenAges = array_values($this->childrenAges);
     }
 
-    public function addSegment()
+    public function updatedDailySlots($value, $key)
     {
-        $totalAllocatedNights = collect($this->segments)->sum('nights');
-        $remainingNights = max(0, $this->totalNights - $totalAllocatedNights);
-
-        $defaultNights = 1;
-        if ($remainingNights > 0) {
-            $defaultNights = $remainingNights;
-        } else {
-            $lastIndex = count($this->segments) - 1;
-            if ($lastIndex >= 0 && $this->segments[$lastIndex]['nights'] > 1) {
-                $this->segments[$lastIndex]['nights']--;
-                $defaultNights = 1;
-            }
-        }
-
-        $this->segments[] = [
-            'destinations' => [],
-            'nights' => $defaultNights,
-            'accommodations' => [
-                ['accommodation_id' => '', 'buying_price' => 0, 'nights' => $defaultNights, 'note' => ''],
-            ],
-            'tours' => [],
-        ];
-
-        $this->recalculateSegmentDates();
-    }
-
-    public function removeSegment($index)
-    {
-        if (count($this->segments) > 1) {
-            $nightsToReturn = $this->segments[$index]['nights'] ?? 0;
-            unset($this->segments[$index]);
-            $this->segments = array_values($this->segments);
-
-            if (count($this->segments) > 0) {
-                $targetIndex = $index > 0 ? $index - 1 : 0;
-                $this->segments[$targetIndex]['nights'] += $nightsToReturn;
-            }
-
-            $this->recalculateSegmentDates();
-        }
-    }
-
-    public function addAccommodationToSegment($segmentIndex)
-    {
-        $seg = &$this->segments[$segmentIndex];
-        $allocated = collect($seg['accommodations'])->sum('nights');
-        $remaining = max(0, $seg['nights'] - $allocated);
-
-        $defaultNights = 1;
-        if ($remaining > 0) {
-            $defaultNights = $remaining;
-        } else {
-            $lastAccIndex = count($seg['accommodations']) - 1;
-            if ($lastAccIndex >= 0 && $seg['accommodations'][$lastAccIndex]['nights'] > 1) {
-                $seg['accommodations'][$lastAccIndex]['nights']--;
-                $defaultNights = 1;
-            }
-        }
-
-        $seg['accommodations'][] = [
-            'accommodation_id' => '',
-            'buying_price' => 0,
-            'nights' => $defaultNights,
-            'note' => '',
-        ];
-    }
-
-    public function removeAccommodationFromSegment($segmentIndex, $accIndex)
-    {
-        $seg = &$this->segments[$segmentIndex];
-        if (count($seg['accommodations']) > 1) {
-            $nightsToReturn = $seg['accommodations'][$accIndex]['nights'] ?? 0;
-            unset($seg['accommodations'][$accIndex]);
-            $seg['accommodations'] = array_values($seg['accommodations']);
-
-            $targetIndex = $accIndex > 0 ? $accIndex - 1 : 0;
-            $seg['accommodations'][$targetIndex]['nights'] += $nightsToReturn;
-        }
-    }
-
-    public function updatedSegments($value, $key)
-    {
-        if (str_contains($key, '.nights')) {
+        if (str_contains($key, '.accommodation.destination_id')) {
             $parts = explode('.', $key);
-            if (count($parts) === 2) {
-                $this->recalculateSegmentDates();
-
-                $segmentIndex = (int) $parts[1];
-                if (count($this->segments[$segmentIndex]['accommodations']) === 1) {
-                    $this->segments[$segmentIndex]['accommodations'][0]['nights'] = (int) $value;
+            $dayIndex = (int) $parts[0];
+            $destId = $value;
+            $accId = $this->dailySlots[$dayIndex]['accommodation']['accommodation_id'] ?? '';
+            if ($accId) {
+                $acc = Accommodation::find($accId);
+                if (! $acc || $acc->destination_id != $destId) {
+                    $this->dailySlots[$dayIndex]['accommodation']['accommodation_id'] = '';
+                    $this->dailySlots[$dayIndex]['accommodation']['buying_price'] = 0;
                 }
             }
         }
 
-        if (str_contains($key, '.destinations')) {
+        if (str_contains($key, '.tour.destination_id')) {
             $parts = explode('.', $key);
-            if (count($parts) === 2) {
-                $segmentIndex = (int) $parts[1];
-                $seg = &$this->segments[$segmentIndex];
-                $validAccIds = Accommodation::whereIn('destination_id', $seg['destinations'] ?? [])->pluck('id')->toArray();
-
-                $seg['accommodations'] = collect($seg['accommodations'] ?? [])
-                    ->filter(function ($acc) use ($validAccIds) {
-                        return empty($acc['accommodation_id']) || in_array($acc['accommodation_id'], $validAccIds);
-                    })
-                    ->values()
-                    ->toArray();
-
-                if (empty($seg['accommodations'])) {
-                    $seg['accommodations'][] = ['accommodation_id' => '', 'buying_price' => 0, 'nights' => $seg['nights'], 'note' => ''];
-                }
-
-                $validTourIds = Tour::whereIn('destination_id', $seg['destinations'] ?? [])->pluck('id')->toArray();
-                foreach ($seg['tours'] ?? [] as $tourIndex => $tour) {
-                    if (! empty($tour['tour_id']) && ! in_array($tour['tour_id'], $validTourIds)) {
-                        $seg['tours'][$tourIndex]['tour_id'] = '';
-                        $seg['tours'][$tourIndex]['buying_price'] = 0;
-                    }
+            $dayIndex = (int) $parts[0];
+            $destId = $value;
+            $tourId = $this->dailySlots[$dayIndex]['tour']['tour_id'] ?? '';
+            if ($tourId) {
+                $tour = Tour::find($tourId);
+                if (! $tour || $tour->destination_id != $destId) {
+                    $this->dailySlots[$dayIndex]['tour']['tour_id'] = '';
+                    $this->dailySlots[$dayIndex]['tour']['buying_price'] = 0;
                 }
             }
         }
 
-        if (str_contains($key, '.accommodation_id')) {
+        if (str_contains($key, '.accommodation.accommodation_id')) {
             $parts = explode('.', $key);
-            if (count($parts) === 4) {
-                $segmentIndex = (int) $parts[0];
-                $accIndex = (int) $parts[2];
+            if (count($parts) === 3) {
+                $dayIndex = (int) $parts[0];
                 if ($value) {
                     $acc = Accommodation::find($value);
                     if ($acc) {
-                        $this->segments[$segmentIndex]['accommodations'][$accIndex]['buying_price'] = $acc->default_buying_price;
+                        $this->dailySlots[$dayIndex]['accommodation']['buying_price'] = $acc->default_buying_price;
                     }
                 }
             }
         }
 
-        if (str_contains($key, '.tour_id')) {
+        if (str_contains($key, '.tour.tour_id')) {
             $parts = explode('.', $key);
-            if (count($parts) === 4) {
-                $segmentIndex = (int) $parts[0];
-                $tourIndex = (int) $parts[2];
+            if (count($parts) === 3) {
+                $dayIndex = (int) $parts[0];
                 if ($value) {
                     $tour = Tour::find($value);
                     if ($tour) {
-                        $this->segments[$segmentIndex]['tours'][$tourIndex]['buying_price'] = $tour->default_buying_price;
+                        $this->dailySlots[$dayIndex]['tour']['buying_price'] = $tour->default_buying_price;
                     }
                 }
             }
@@ -410,36 +379,32 @@ class ItineraryGenerator extends Component
                 'leavingDate' => 'required',
                 'leavingTime' => 'nullable|string',
             ]);
-            if (empty($this->segments)) {
-                $this->addSegment();
+            if (empty($this->dailySlots)) {
+                $this->recalculateDailySlots();
             }
         } elseif ($this->currentStep == 2) {
-            $this->validate([
-                'segments.*.destinations' => 'required|array|min:1',
-                'segments.*.nights' => 'required|numeric|min:1',
-                'segments.*.accommodations.*.accommodation_id' => 'required',
-                'segments.*.accommodations.*.nights' => 'required|numeric|min:1',
-                'segments.*.accommodations.*.buying_price' => 'required|numeric|min:0',
-                'segments.*.accommodations.*.note' => 'nullable|string',
+            $rules = [
+                'dailySlots.*.accommodation.destination_id' => 'nullable',
+                'dailySlots.*.accommodation.accommodation_id' => 'nullable',
+                'dailySlots.*.accommodation.buying_price' => 'required|numeric|min:0',
+                'dailySlots.*.accommodation.note' => 'nullable|string',
+                'dailySlots.*.tour.destination_id' => 'nullable',
+                'dailySlots.*.tour.tour_id' => 'nullable',
+                'dailySlots.*.tour.buying_price' => 'required|numeric|min:0',
+            ];
+
+            // Make accommodation required for all nights (the first $totalNights slots)
+            for ($i = 0; $i < $this->totalNights; $i++) {
+                $rules["dailySlots.{$i}.accommodation.destination_id"] = 'required';
+                $rules["dailySlots.{$i}.accommodation.accommodation_id"] = 'required';
+            }
+
+            $this->validate($rules, [
+                'dailySlots.*.accommodation.destination_id.required' => 'حقل الوجهة مطلوب.',
+                'dailySlots.*.accommodation.accommodation_id.required' => 'يرجى اختيار السكن.',
+                'dailySlots.*.accommodation.buying_price.required' => 'سعر الشراء مطلوب.',
+                'dailySlots.*.tour.buying_price.required' => 'سعر الشراء مطلوب.',
             ]);
-
-            // Validate total nights
-            $segTotalNights = collect($this->segments)->sum('nights');
-            if ($segTotalNights > $this->totalNights) {
-                $this->addError('segment_nights_total', 'إجمالي عدد ليالي الأقسام ('.$segTotalNights.') يتجاوز إجمالي ليالي الرحلة ('.$this->totalNights.').');
-
-                return;
-            }
-
-            // Validate accommodation nights within each segment
-            foreach ($this->segments as $index => $seg) {
-                $accNights = collect($seg['accommodations'] ?? [])->sum('nights');
-                if ($accNights > $seg['nights']) {
-                    $this->addError('segments.'.$index.'.accommodation_nights', 'إجمالي ليالي الفنادق في هذا القسم ('.$accNights.') يتجاوز ليالي القسم ('.$seg['nights'].').');
-
-                    return;
-                }
-            }
         }
 
         if ($this->currentStep < 3) {
@@ -457,14 +422,12 @@ class ItineraryGenerator extends Component
     public function getTotalBuyingPriceProperty()
     {
         $total = 0;
-        foreach ($this->segments as $seg) {
-            foreach ($seg['accommodations'] ?? [] as $acc) {
-                $total += ((float) ($acc['buying_price'] ?? 0) * (int) ($acc['nights'] ?? 1));
+        foreach ($this->dailySlots as $index => $slot) {
+            if ($index < $this->totalNights && ! empty($slot['accommodation']['accommodation_id'])) {
+                $total += (float) ($slot['accommodation']['buying_price'] ?? 0);
             }
-            if (! $this->includeRentalCar) {
-                foreach ($seg['tours'] ?? [] as $tour) {
-                    $total += (float) ($tour['buying_price'] ?? 0);
-                }
+            if (! $this->includeRentalCar && ! empty($slot['tour']['tour_id'])) {
+                $total += (float) ($slot['tour']['buying_price'] ?? 0);
             }
         }
         if ($this->includeRentalCar) {
@@ -494,12 +457,15 @@ class ItineraryGenerator extends Component
         ]);
 
         $allDestIds = [];
-        foreach ($this->segments as $seg) {
-            if (! empty($seg['destinations'])) {
-                $allDestIds = array_merge($allDestIds, $seg['destinations']);
+        foreach ($this->dailySlots as $slot) {
+            if (! empty($slot['accommodation']['destination_id'])) {
+                $allDestIds[] = $slot['accommodation']['destination_id'];
+            }
+            if (! $this->includeRentalCar && ! empty($slot['tour']['destination_id'])) {
+                $allDestIds[] = $slot['tour']['destination_id'];
             }
         }
-        $this->destinations = array_values(array_unique($allDestIds));
+        $this->destinations = array_values(array_unique(array_filter($allDestIds)));
 
         $dataToSave = [
             'adultsCount' => $this->adultsCount,
@@ -509,7 +475,7 @@ class ItineraryGenerator extends Component
             'includeRentalCar' => $this->includeRentalCar,
             'selectedCarId' => $this->selectedCarId,
             'carBuyingPrice' => $this->carBuyingPrice,
-            'segments' => $this->segments,
+            'dailySlots' => $this->dailySlots,
             'voucherNotes' => $this->voucherNotes,
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
@@ -569,12 +535,15 @@ class ItineraryGenerator extends Component
         unset($this->isEditable);
 
         $allDestIds = [];
-        foreach ($this->segments as $seg) {
-            if (! empty($seg['destinations'])) {
-                $allDestIds = array_merge($allDestIds, $seg['destinations']);
+        foreach ($this->dailySlots as $slot) {
+            if (! empty($slot['accommodation']['destination_id'])) {
+                $allDestIds[] = $slot['accommodation']['destination_id'];
+            }
+            if (! $this->includeRentalCar && ! empty($slot['tour']['destination_id'])) {
+                $allDestIds[] = $slot['tour']['destination_id'];
             }
         }
-        $this->destinations = array_values(array_unique($allDestIds));
+        $this->destinations = array_values(array_unique(array_filter($allDestIds)));
 
         $dataToSave = [
             'adultsCount' => $this->adultsCount,
@@ -584,7 +553,7 @@ class ItineraryGenerator extends Component
             'includeRentalCar' => $this->includeRentalCar,
             'selectedCarId' => $this->selectedCarId,
             'carBuyingPrice' => $this->carBuyingPrice,
-            'segments' => $this->segments,
+            'dailySlots' => $this->dailySlots,
             'voucherNotes' => $this->voucherNotes,
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
@@ -647,7 +616,7 @@ class ItineraryGenerator extends Component
             'leavingTime' => $this->leavingTime,
             'totalDays' => $this->totalDays,
             'totalNights' => $this->totalNights,
-            'segments' => $this->segments,
+            'dailySlots' => $this->dailySlots,
             'voucherNotes' => $this->voucherNotes,
             'includeRentalCar' => $this->includeRentalCar,
             'selectedCarId' => $this->selectedCarId,
