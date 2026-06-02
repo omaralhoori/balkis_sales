@@ -103,6 +103,12 @@
                 <th>تاريخ المغادرة</th>
                 <td>{{ $leavingDate }} @if(!empty($leavingTime)) (الساعة: {{ $leavingTime }}) @endif</td>
             </tr>
+            @if(!empty($customerWhatsapp))
+            <tr>
+                <th>رقم الواتساب</th>
+                <td colspan="3" dir="ltr" style="text-align: right">+{{ $customerWhatsapp }}</td>
+            </tr>
+            @endif
         </table>
     </div>
 
@@ -143,7 +149,10 @@
                             @endif
                         </td>
                         <td style="vertical-align: top;">
-                            @if(!$includeRentalCar)
+                            @php
+                                $hasNoCarOnThisDay = !$includeRentalCar || ($index == 0 && $excludeCarFirstDay) || ($index == count($dailySlots) - 1 && $excludeCarLastDay);
+                            @endphp
+                            @if($hasNoCarOnThisDay)
                                 @if(!empty($slot['tour']['tour_id']))
                                     @php $tourModel = $tours->find($slot['tour']['tour_id']); @endphp
                                     @if($tourModel)
@@ -179,7 +188,16 @@
                 <th width="30%">نوع السيارة</th>
                 <td>{{ $cars->find($selectedCarId)->car_type ?? '' }}</td>
                 <th width="30%">مدة الاستئجار</th>
-                <td>{{ $totalDays }} أيام</td>
+                <td>
+                    @php
+                        $carDays = $totalDays - ($excludeCarFirstDay ? 1 : 0) - ($excludeCarLastDay ? 1 : 0);
+                        $exclusions = [];
+                        if ($excludeCarFirstDay) $exclusions[] = 'اليوم الأول';
+                        if ($excludeCarLastDay) $exclusions[] = 'اليوم الأخير';
+                        $exclusionsStr = !empty($exclusions) ? ' (باستثناء ' . implode(' و ', $exclusions) . ')' : '';
+                    @endphp
+                    {{ max(0, $carDays) }} أيام{{ $exclusionsStr }}
+                </td>
             </tr>
         </table>
     </div>

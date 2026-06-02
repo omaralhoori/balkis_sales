@@ -21,7 +21,9 @@ class ItineraryGenerator extends Component
 
     // Step 1: Info & Dates
     public string $customerName = '';
+
     public string $customerWhatsapp = '';
+
     public $countryCode = '90';
 
     public int $adultsCount = 1;
@@ -49,6 +51,10 @@ class ItineraryGenerator extends Component
 
     // Step 3: Cars
     public bool $includeRentalCar = false;
+
+    public bool $excludeCarFirstDay = false;
+
+    public bool $excludeCarLastDay = false;
 
     public ?int $selectedCarId = null;
 
@@ -85,9 +91,28 @@ class ItineraryGenerator extends Component
                 $this->leavingTime = $data['leavingTime'] ?? '';
                 $this->voucherNotes = $data['voucherNotes'] ?? '';
                 $this->includeRentalCar = $data['includeRentalCar'] ?? false;
+                $this->excludeCarFirstDay = $data['excludeCarFirstDay'] ?? false;
+                $this->excludeCarLastDay = $data['excludeCarLastDay'] ?? false;
                 $this->selectedCarId = $data['selectedCarId'] ?? null;
                 $this->carBuyingPrice = $data['carBuyingPrice'] ?? 0;
                 $this->finalSellingPrice = $data['finalSellingPrice'] ?? 0;
+                $this->customerWhatsapp = $data['customerWhatsapp'] ?? '';
+                $this->countryCode = $data['countryCode'] ?? '90';
+                if (empty($this->customerWhatsapp) && ! empty($it->customer_whatsapp)) {
+                    $knownCodes = ['966', '971', '965', '974', '973', '968', '20', '970', '90'];
+                    $foundCode = false;
+                    foreach ($knownCodes as $code) {
+                        if (str_starts_with($it->customer_whatsapp, $code)) {
+                            $this->countryCode = $code;
+                            $this->customerWhatsapp = substr($it->customer_whatsapp, strlen($code));
+                            $foundCode = true;
+                            break;
+                        }
+                    }
+                    if (! $foundCode) {
+                        $this->customerWhatsapp = $it->customer_whatsapp;
+                    }
+                }
 
                 // Load daily slots with backward compatibility fallbacks
                 if (isset($data['dailySlots'])) {
@@ -373,15 +398,15 @@ class ItineraryGenerator extends Component
     {
         if ($this->currentStep == 1) {
             $this->validate([
-            'customerName' => 'required',
-            'customerWhatsapp' => 'required',
-            'adultsCount' => 'required|numeric|min:1',
-            'childrenAges.*' => 'required|numeric|min:0|max:12',
-            'arrivingDate' => 'required',
-            'arrivingTime' => 'nullable|string',
-            'leavingDate' => 'required',
-            'leavingTime' => 'nullable|string',
-        ]);
+                'customerName' => 'required',
+                'customerWhatsapp' => 'nullable',
+                'adultsCount' => 'required|numeric|min:1',
+                'childrenAges.*' => 'required|numeric|min:0|max:12',
+                'arrivingDate' => 'required',
+                'arrivingTime' => 'nullable|string',
+                'leavingDate' => 'required',
+                'leavingTime' => 'nullable|string',
+            ]);
             if (empty($this->dailySlots)) {
                 $this->recalculateDailySlots();
             }
@@ -429,12 +454,14 @@ class ItineraryGenerator extends Component
             if ($index < $this->totalNights && ! empty($slot['accommodation']['accommodation_id'])) {
                 $total += (float) ($slot['accommodation']['buying_price'] ?? 0);
             }
-            if (! $this->includeRentalCar && ! empty($slot['tour']['tour_id'])) {
+            $hasNoCarOnThisDay = ! $this->includeRentalCar || ($index == 0 && $this->excludeCarFirstDay) || ($index == $this->totalDays - 1 && $this->excludeCarLastDay);
+            if ($hasNoCarOnThisDay && ! empty($slot['tour']['tour_id'])) {
                 $total += (float) ($slot['tour']['buying_price'] ?? 0);
             }
         }
         if ($this->includeRentalCar) {
-            $total += ((float) $this->carBuyingPrice * $this->totalDays);
+            $carDays = $this->totalDays - ($this->excludeCarFirstDay ? 1 : 0) - ($this->excludeCarLastDay ? 1 : 0);
+            $total += ((float) $this->carBuyingPrice * max(0, $carDays));
         }
 
         return $total;
@@ -470,20 +497,24 @@ class ItineraryGenerator extends Component
         }
         $this->destinations = array_values(array_unique(array_filter($allDestIds)));
 
+        $whatsappConsolidated = empty($this->customerWhatsapp) ? null : ($this->countryCode.preg_replace('/^0+/', '', $this->customerWhatsapp));
+
         $dataToSave = [
             'adultsCount' => $this->adultsCount,
             'childrenAges' => $this->childrenAges,
             'arrivingTime' => $this->arrivingTime,
             'leavingTime' => $this->leavingTime,
             'includeRentalCar' => $this->includeRentalCar,
+            'excludeCarFirstDay' => $this->excludeCarFirstDay,
+            'excludeCarLastDay' => $this->excludeCarLastDay,
             'selectedCarId' => $this->selectedCarId,
             'carBuyingPrice' => $this->carBuyingPrice,
             'dailySlots' => $this->dailySlots,
             'voucherNotes' => $this->voucherNotes,
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
-            'customer_whatsapp' => $this->countryCode . preg_replace('/^0+/', '', $this->customerWhatsapp),
-            
+            'customerWhatsapp' => $this->customerWhatsapp,
+            'countryCode' => $this->countryCode,
         ];
 
         $arrDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->format('Y-m-d');
@@ -497,6 +528,7 @@ class ItineraryGenerator extends Component
             $it = $query->findOrFail($this->itineraryId);
             $it->update([
                 'customer_name' => $this->customerName,
+                'customer_whatsapp' => $whatsappConsolidated,
                 'destinations' => $this->destinations,
                 'arriving_date' => $arrDate,
                 'leaving_date' => $levDate,
@@ -511,6 +543,7 @@ class ItineraryGenerator extends Component
             $it = Itinerary::create([
                 'user_id' => Auth::id(),
                 'customer_name' => $this->customerName,
+                'customer_whatsapp' => $whatsappConsolidated,
                 'destinations' => $this->destinations,
                 'arriving_date' => $arrDate,
                 'leaving_date' => $levDate,
@@ -550,18 +583,24 @@ class ItineraryGenerator extends Component
         }
         $this->destinations = array_values(array_unique(array_filter($allDestIds)));
 
+        $whatsappConsolidated = empty($this->customerWhatsapp) ? null : ($this->countryCode.preg_replace('/^0+/', '', $this->customerWhatsapp));
+
         $dataToSave = [
             'adultsCount' => $this->adultsCount,
             'childrenAges' => $this->childrenAges,
             'arrivingTime' => $this->arrivingTime,
             'leavingTime' => $this->leavingTime,
             'includeRentalCar' => $this->includeRentalCar,
+            'excludeCarFirstDay' => $this->excludeCarFirstDay,
+            'excludeCarLastDay' => $this->excludeCarLastDay,
             'selectedCarId' => $this->selectedCarId,
             'carBuyingPrice' => $this->carBuyingPrice,
             'dailySlots' => $this->dailySlots,
             'voucherNotes' => $this->voucherNotes,
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
+            'customerWhatsapp' => $this->customerWhatsapp,
+            'countryCode' => $this->countryCode,
         ];
 
         $arrDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->format('Y-m-d');
@@ -575,6 +614,7 @@ class ItineraryGenerator extends Component
             $it = $query->findOrFail($this->itineraryId);
             $it->update([
                 'customer_name' => $this->customerName,
+                'customer_whatsapp' => $whatsappConsolidated,
                 'destinations' => $this->destinations,
                 'arriving_date' => $arrDate,
                 'leaving_date' => $levDate,
@@ -588,6 +628,7 @@ class ItineraryGenerator extends Component
             $it = Itinerary::create([
                 'user_id' => Auth::id(),
                 'customer_name' => $this->customerName,
+                'customer_whatsapp' => $whatsappConsolidated,
                 'destinations' => $this->destinations,
                 'arriving_date' => $arrDate,
                 'leaving_date' => $levDate,
@@ -612,6 +653,7 @@ class ItineraryGenerator extends Component
 
         $data = [
             'customerName' => $this->customerName,
+            'customerWhatsapp' => empty($this->customerWhatsapp) ? null : ($this->countryCode.preg_replace('/^0+/', '', $this->customerWhatsapp)),
             'adultsCount' => $this->adultsCount,
             'childrenAges' => $this->childrenAges,
             'destinations' => Destination::whereIn('id', $this->destinations)->pluck('name')->toArray(),
@@ -624,6 +666,8 @@ class ItineraryGenerator extends Component
             'dailySlots' => $this->dailySlots,
             'voucherNotes' => $this->voucherNotes,
             'includeRentalCar' => $this->includeRentalCar,
+            'excludeCarFirstDay' => $this->excludeCarFirstDay,
+            'excludeCarLastDay' => $this->excludeCarLastDay,
             'selectedCarId' => $this->selectedCarId,
             'carBuyingPrice' => $this->carBuyingPrice,
             'totalBuyingPrice' => $this->totalBuyingPrice,
@@ -695,8 +739,12 @@ class ItineraryGenerator extends Component
         }
 
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
-        $cleanPhone = preg_replace('/^0+/', '', $this->customerWhatsapp);
-$url = 'https://wa.me/' . $this->countryCode . $cleanPhone . '?text=' . urlencode($text);
+        if (empty($this->customerWhatsapp)) {
+            $url = 'https://api.whatsapp.com/send?text='.urlencode($text);
+        } else {
+            $cleanPhone = preg_replace('/^0+/', '', $this->customerWhatsapp);
+            $url = 'https://wa.me/'.$this->countryCode.$cleanPhone.'?text='.urlencode($text);
+        }
         $this->dispatch('open-url', url: $url);
     }
 
@@ -707,6 +755,7 @@ $url = 'https://wa.me/' . $this->countryCode . $cleanPhone . '?text=' . urlencod
             'dbDestinations' => Destination::all(),
         ])->layout('layouts.app');
     }
+
     public function updatedCustomerWhatsapp($value)
     {
         $this->customerWhatsapp = preg_replace('/^0+/', '', $value);

@@ -57,7 +57,7 @@
                     @error('customerName') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
                 <div class="col-span-2">
-    <label class="block text-sm font-medium text-gray-900 mb-1">واتساب العميل</label>
+    <label class="block text-sm font-medium text-gray-900 mb-1">واتساب العميل (اختياري)</label>
     <div class="flex">
     <select wire:model="countryCode" class="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-700 text-sm focus:border-blue-500 focus:ring-blue-500">
         <option value="90">+90 (تركيا)</option>
@@ -70,7 +70,7 @@
         <option value="20">+20 (مصر)</option>
         <option value="970">+970 (فلسطين)</option>
     </select>
-    <input type="text" wire:model.lazy="customerWhatsapp" placeholder="رقم الهاتف" class="flex-1 rounded-r-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+    <input type="text" wire:model.lazy="customerWhatsapp" placeholder="رقم الهاتف (اختياري)" class="flex-1 rounded-r-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
 </div>
 </div>
     @error('customerWhatsapp') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
@@ -325,8 +325,8 @@
                         </div>
                         @endif
 
-                        <!-- Tour Slot (only if rental car is disabled) -->
-                        @if(!$includeRentalCar)
+                        <!-- Tour Slot (only if rental car is disabled or excluded for this day) -->
+                        @if(!$includeRentalCar || ($slotIndex == 0 && $excludeCarFirstDay) || ($slotIndex == $totalDays - 1 && $excludeCarLastDay))
                         <div class="space-y-4">
                             <h4 class="font-bold text-gray-800 border-r-4 border-amber-500 pr-2">تفاصيل الرحلة السياحية والبرنامج</h4>
                             
@@ -429,9 +429,20 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
                         <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600" {{ !$this->isEditable ? 'disabled' : '' }}>
                     </div>
+
+                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <label class="flex items-center cursor-pointer select-none">
+                            <input type="checkbox" wire:model.live="excludeCarFirstDay" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
+                            <span class="mr-2 text-sm text-gray-700 font-medium">عدم إضافة السيارة لليوم الأول</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer select-none">
+                            <input type="checkbox" wire:model.live="excludeCarLastDay" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
+                            <span class="mr-2 text-sm text-gray-700 font-medium">عدم إضافة السيارة لليوم الأخير</span>
+                        </label>
+                    </div>
                     
                     <div class="md:col-span-2 text-sm text-blue-700">
-                        * سيتم حساب تكلفة السيارة لعدد <strong>{{ $totalDays }} أيام</strong> الإجمالية.
+                        * سيتم حساب تكلفة السيارة لعدد <strong>{{ max(0, $totalDays - ($excludeCarFirstDay ? 1 : 0) - ($excludeCarLastDay ? 1 : 0)) }} أيام</strong> الإجمالية.
                     </div>
                 </div>
                 @endif
@@ -473,7 +484,10 @@
                             </div>
                         @endif
 
-                        @if(!$includeRentalCar && !empty($slot['tour']['tour_id']))
+                        @php 
+                            $hasNoCarOnThisDay = !$includeRentalCar || ($index == 0 && $excludeCarFirstDay) || ($index == $totalDays - 1 && $excludeCarLastDay);
+                        @endphp
+                        @if($hasNoCarOnThisDay && !empty($slot['tour']['tour_id']))
                             @php 
                                 $tourModel = \App\Models\Tour::find($slot['tour']['tour_id']);
                                 $tourPrice = $slot['tour']['buying_price'] ?? 0;
@@ -488,10 +502,15 @@
                     @if($includeRentalCar && $selectedCarId)
                         @php 
                             $carModel = $cars->find($selectedCarId);
-                            $carTotal = $carBuyingPrice * $totalDays;
+                            $carDays = $totalDays - ($excludeCarFirstDay ? 1 : 0) - ($excludeCarLastDay ? 1 : 0);
+                            $carTotal = $carBuyingPrice * max(0, $carDays);
+                            $exclusions = [];
+                            if ($excludeCarFirstDay) $exclusions[] = 'اليوم الأول';
+                            if ($excludeCarLastDay) $exclusions[] = 'اليوم الأخير';
+                            $exclusionsStr = !empty($exclusions) ? ' (باستثناء ' . implode(' و ', $exclusions) . ')' : '';
                         @endphp
                         <div class="flex justify-between text-sm text-gray-500 border-t pt-3 border-gray-200">
-                            <span>سيارة بدون سائق: {{ $carModel->car_type ?? '' }} ({{ $totalDays }} أيام)</span>
+                            <span>سيارة بدون سائق: {{ $carModel->car_type ?? '' }} ({{ max(0, $carDays) }} أيام{{ $exclusionsStr }})</span>
                             <span>${{ number_format($carTotal, 2) }}</span>
                         </div>
                     @endif

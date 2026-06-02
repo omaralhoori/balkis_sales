@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\ItineraryGenerator;
+use App\Livewire\ItineraryList;
 use App\Models\Accommodation;
 use App\Models\Car;
 use App\Models\Destination;
@@ -455,4 +456,173 @@ test('it downloads voucher PDF with custom footer settings', function () {
         ->set('finalSellingPrice', 1000)
         ->call('downloadPdf')
         ->assertStatus(200);
+});
+
+test('it validates optional whatsapp number and stores it properly', function () {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
+
+    // 1. Without WhatsApp (nullable)
+    $component = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد أحمد')
+        ->set('customerWhatsapp', '')
+        ->set('adultsCount', 2)
+        ->set('childrenAges', [])
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026')
+        ->call('nextStep')
+        ->assertHasNoErrors();
+
+    $component->set('dailySlots.0.accommodation.destination_id', $destination->id)
+        ->set('dailySlots.0.accommodation.accommodation_id', $accommodation->id)
+        ->set('dailySlots.1.accommodation.destination_id', $destination->id)
+        ->set('dailySlots.1.accommodation.accommodation_id', $accommodation->id)
+        ->call('nextStep')
+        ->set('finalSellingPrice', 1500)
+        ->call('saveItinerary')
+        ->assertHasNoErrors();
+
+    $itinerary = Itinerary::latest('id')->first();
+    expect($itinerary->customer_whatsapp)->toBeNull();
+    expect($itinerary->data['customerWhatsapp'])->toBe('');
+
+    // 2. With WhatsApp
+    $component2 = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد أحمد')
+        ->set('customerWhatsapp', '05391234567')
+        ->set('countryCode', '90')
+        ->set('adultsCount', 2)
+        ->set('childrenAges', [])
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026')
+        ->call('nextStep')
+        ->assertHasNoErrors();
+
+    $component2->set('dailySlots.0.accommodation.destination_id', $destination->id)
+        ->set('dailySlots.0.accommodation.accommodation_id', $accommodation->id)
+        ->set('dailySlots.1.accommodation.destination_id', $destination->id)
+        ->set('dailySlots.1.accommodation.accommodation_id', $accommodation->id)
+        ->call('nextStep')
+        ->set('finalSellingPrice', 1500)
+        ->call('saveItinerary')
+        ->assertHasNoErrors();
+
+    $itinerary2 = Itinerary::latest('id')->first();
+    expect($itinerary2->customer_whatsapp)->toBe('905391234567');
+});
+
+test('it calculates buying price with car exclusions and includes daily tours', function () {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
+    $tour = Tour::create([
+        'name' => 'جولة إسطنبول',
+        'type' => 'خاص VIP',
+        'default_buying_price' => 80,
+        'destination_id' => $destination->id,
+    ]);
+
+    $component = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد أحمد')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '23-10-2026') // 3 nights, 4 days
+        ->call('nextStep');
+
+    // Fill accommodations
+    for ($i = 0; $i < 3; $i++) {
+        $component->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id)
+            ->set("dailySlots.{$i}.accommodation.buying_price", 100);
+    }
+
+    // Set rental car
+    $component->set('includeRentalCar', true)
+        ->set('carBuyingPrice', 50); // total 4 days * 50 = 200
+
+    // Without exclusions: 3 nights of acc (300) + 4 days of car (200) = 500
+    expect($component->get('totalBuyingPrice'))->toEqual(500);
+
+    // Exclude first day: 3 nights of acc (300) + 3 days of car (150) = 450
+    $component->set('excludeCarFirstDay', true);
+    expect($component->get('totalBuyingPrice'))->toEqual(450);
+
+    // Select tour for first day: tour price (80) + 3 nights of acc (300) + 3 days of car (150) = 530
+    $component->set('dailySlots.0.tour.destination_id', $destination->id)
+        ->set('dailySlots.0.tour.tour_id', $tour->id)
+        ->set('dailySlots.0.tour.buying_price', 80);
+    expect($component->get('totalBuyingPrice'))->toEqual(530);
+
+    // Exclude last day as well: tour price (80) + 3 nights of acc (300) + 2 days of car (100) = 480
+    $component->set('excludeCarLastDay', true);
+    expect($component->get('totalBuyingPrice'))->toEqual(480);
+});
+
+test('it handles previous orders filters and deletion for admin and super admin', function () {
+    $superAdmin = User::factory()->create(['email' => 'superadmin@example.com']);
+    config(['auth.super_admin_email' => 'superadmin@example.com']);
+
+    $admin = User::factory()->create(['role' => 'admin', 'email' => 'admin@example.com']);
+    $employee1 = User::factory()->create(['role' => 'employee']);
+    $employee2 = User::factory()->create(['role' => 'employee']);
+
+    $itinerary1 = Itinerary::create([
+        'user_id' => $employee1->id,
+        'customer_name' => 'زبون موظف 1',
+        'arriving_date' => '2026-10-20',
+        'leaving_date' => '2026-10-25',
+        'total_days' => 6,
+        'total_nights' => 5,
+        'data' => [],
+    ]);
+
+    $itinerary2 = Itinerary::create([
+        'user_id' => $employee2->id,
+        'customer_name' => 'زبون موظف 2',
+        'arriving_date' => '2026-10-20',
+        'leaving_date' => '2026-10-25',
+        'total_days' => 6,
+        'total_nights' => 5,
+        'data' => [],
+    ]);
+
+    // 1. Employee 1 only sees their own itinerary
+    actingAs($employee1);
+    Livewire::test(ItineraryList::class)
+        ->assertViewHas('itineraries', function ($its) use ($itinerary1) {
+            return $its->count() === 1 && $its->first()->id === $itinerary1->id;
+        });
+
+    // 2. Admin sees all itineraries and can filter
+    actingAs($admin);
+    Livewire::test(ItineraryList::class)
+        ->assertViewHas('itineraries', function ($its) {
+            return $its->count() === 2;
+        })
+        ->set('selectedEmployeeId', $employee1->id)
+        ->assertViewHas('itineraries', function ($its) use ($itinerary1) {
+            return $its->count() === 1 && $its->first()->id === $itinerary1->id;
+        });
+
+    // 3. Admin can delete itineraries
+    Livewire::test(ItineraryList::class)
+        ->call('deleteItinerary', $itinerary2->id)
+        ->assertHasNoErrors();
+
+    $this->assertDatabaseMissing('itineraries', ['id' => $itinerary2->id]);
+    $this->assertDatabaseHas('itineraries', ['id' => $itinerary1->id]);
 });

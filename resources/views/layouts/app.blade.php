@@ -37,8 +37,10 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-    <img src="/crm-logo.png" alt="بلقيس للسياحة" style="height: 45px;">
-</div>
+                        <a href="{{ route('home') }}">
+                            <img src="/crm-logo.png" alt="بلقيس للسياحة" style="height: 45px;">
+                        </a>
+                    </div>
                     <div class="flex items-center">
                         <a href="/admin" class="text-sm text-gray-500 hover:text-gray-700">لوحة التحكم</a>
                     </div>
