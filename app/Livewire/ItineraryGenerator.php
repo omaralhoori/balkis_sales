@@ -21,6 +21,8 @@ class ItineraryGenerator extends Component
 
     // Step 1: Info & Dates
     public string $customerName = '';
+    public string $customerWhatsapp = '';
+    public $countryCode = '90';
 
     public int $adultsCount = 1;
 
@@ -371,14 +373,15 @@ class ItineraryGenerator extends Component
     {
         if ($this->currentStep == 1) {
             $this->validate([
-                'customerName' => 'required',
-                'adultsCount' => 'required|numeric|min:1',
-                'childrenAges.*' => 'required|numeric|min:0|max:12',
-                'arrivingDate' => 'required',
-                'arrivingTime' => 'nullable|string',
-                'leavingDate' => 'required',
-                'leavingTime' => 'nullable|string',
-            ]);
+            'customerName' => 'required',
+            'customerWhatsapp' => 'required',
+            'adultsCount' => 'required|numeric|min:1',
+            'childrenAges.*' => 'required|numeric|min:0|max:12',
+            'arrivingDate' => 'required',
+            'arrivingTime' => 'nullable|string',
+            'leavingDate' => 'required',
+            'leavingTime' => 'nullable|string',
+        ]);
             if (empty($this->dailySlots)) {
                 $this->recalculateDailySlots();
             }
@@ -479,6 +482,8 @@ class ItineraryGenerator extends Component
             'voucherNotes' => $this->voucherNotes,
             'totalBuyingPrice' => $this->totalBuyingPrice,
             'finalSellingPrice' => $this->finalSellingPrice,
+            'customer_whatsapp' => $this->countryCode . preg_replace('/^0+/', '', $this->customerWhatsapp),
+            
         ];
 
         $arrDate = Carbon::createFromFormat('d-m-Y', $this->arrivingDate)->format('Y-m-d');
@@ -690,9 +695,8 @@ class ItineraryGenerator extends Component
         }
 
         $text .= "يرجى مراجعة ملف الـ PDF المرفق لمشاهدة الجدول التفصيلي للرحلة خطوة بخطوة.\nنتمنى لكم رحلة سعيدة!";
-
-        $url = 'https://api.whatsapp.com/send?text='.urlencode($text);
-
+        $cleanPhone = preg_replace('/^0+/', '', $this->customerWhatsapp);
+$url = 'https://wa.me/' . $this->countryCode . $cleanPhone . '?text=' . urlencode($text);
         $this->dispatch('open-url', url: $url);
     }
 
@@ -702,5 +706,9 @@ class ItineraryGenerator extends Component
             'cars' => Car::all(),
             'dbDestinations' => Destination::all(),
         ])->layout('layouts.app');
+    }
+    public function updatedCustomerWhatsapp($value)
+    {
+        $this->customerWhatsapp = preg_replace('/^0+/', '', $value);
     }
 }

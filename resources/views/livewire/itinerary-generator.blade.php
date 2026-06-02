@@ -56,6 +56,25 @@
                     <input type="text" wire:model="customerName" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="محمد أحمد..." {{ !$this->isEditable ? 'disabled' : '' }}>
                     @error('customerName') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
+                <div class="col-span-2">
+    <label class="block text-sm font-medium text-gray-900 mb-1">واتساب العميل</label>
+    <div class="flex">
+    <select wire:model="countryCode" class="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-700 text-sm focus:border-blue-500 focus:ring-blue-500">
+        <option value="90">+90 (تركيا)</option>
+        <option value="966">+966 (السعودية)</option>
+        <option value="971">+971 (الإمارات)</option>
+        <option value="965">+965 (الكويت)</option>
+        <option value="974">+974 (قطر)</option>
+        <option value="973">+973 (البحرين)</option>
+        <option value="968">+968 (عمان)</option>
+        <option value="20">+20 (مصر)</option>
+        <option value="970">+970 (فلسطين)</option>
+    </select>
+    <input type="text" wire:model.lazy="customerWhatsapp" placeholder="رقم الهاتف" class="flex-1 rounded-r-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+</div>
+</div>
+    @error('customerWhatsapp') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+</div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">عدد البالغين</label>

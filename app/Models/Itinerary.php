@@ -17,6 +17,7 @@ class Itinerary extends Model
         'data',
         'is_pinned',
         'deposit',
+        'customer_whatsapp',
     ];
 
     protected $casts = [

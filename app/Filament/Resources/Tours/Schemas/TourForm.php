@@ -14,6 +14,10 @@ class TourForm
         return $schema
             ->components([
                 TextInput::make('name')->label('اسم الجولة')->required(),
+                TextInput::make('customer_whatsapp')
+                ->label('واتساب العميل')
+                ->tel()
+                ->required(),
                 Select::make('destination_id')
                     ->label('الوجهة')
                     ->relationship('destination', 'name')

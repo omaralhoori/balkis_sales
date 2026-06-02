@@ -15,7 +15,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
-        body { font-family: 'Cairo', sans-serif; }
+       body { 
+            font-family: 'Cairo', sans-serif; 
+            background-image: url('/bg-balkis.jpg') !important; 
+            background-size: 100% auto !important; 
+            background-position: center top !important; 
+            background-repeat: no-repeat !important;
+            background-attachment: fixed !important;
+            background-color: #f8f9fa !important; 
+        }
         [x-cloak] { display: none !important; }
         .ts-control { border-radius: 0.5rem; padding: 0.5rem; border-color: #d1d5db; }
         .ts-control.focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
@@ -29,8 +37,8 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-                        <h1 class="text-xl font-bold text-blue-600">بلقيس للسياحة</h1>
-                    </div>
+    <img src="/crm-logo.png" alt="بلقيس للسياحة" style="height: 45px;">
+</div>
                     <div class="flex items-center">
                         <a href="/admin" class="text-sm text-gray-500 hover:text-gray-700">لوحة التحكم</a>
                     </div>

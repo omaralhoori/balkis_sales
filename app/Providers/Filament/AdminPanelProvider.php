@@ -28,19 +28,41 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->colors([
-                'primary' => Color::Amber,
-            ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
-            ->pages([
-                Dashboard::class,
-            ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
-            ])
+        ->login()
+        ->colors([
+            'primary' => '#bda06d',
+        ])
+        ->font('Cairo')
+        ->brandLogo(asset('crm-logo.png'))
+        ->brandLogoHeight('3rem')
+        ->darkMode(false)
+        ->renderHook(
+            'panels::styles.after',
+            fn (): string => new \Illuminate\Support\HtmlString('
+                <style>
+                    body, html, .fi-simple-layout { 
+                        background-image: url("/crm-bg.jpg") !important; 
+                        background-size: cover !important; 
+                        background-position: center !important; 
+                        background-repeat: no-repeat !important; 
+                        background-color: #f8f9fa !important;
+                    }
+                    .fi-simple-main-card { 
+                        background-color: rgba(255, 255, 255, 0.95) !important; 
+                        backdrop-filter: blur(10px) !important; 
+                        border-radius: 16px !important; 
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important; 
+                        border: 1px solid rgba(189, 160, 109, 0.2) !important;
+                    }
+                </style>
+            '),
+        )
+        ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+        ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+        ->widgets([
+            AccountWidget::class,
+            FilamentInfoWidget::class,
+        ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

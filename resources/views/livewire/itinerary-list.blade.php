@@ -30,6 +30,9 @@
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4 font-bold text-gray-900 flex items-center gap-2">
                                 <span>{{ $itinerary->customer_name }}</span>
+                                <a href="https://wa.me/{{ str_replace(['+', ' ', '-'], '', $itinerary->customer_whatsapp) }}" target="_blank" class="text-green-600 hover:text-green-800 ml-2">
+    (واتساب)
+</a>
                                 @if($itinerary->is_pinned)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">مثبت</span>
                                 @else
