@@ -678,6 +678,7 @@ class ItineraryGenerator extends Component
             'accommodations' => Accommodation::all(),
             'tours' => Tour::all(),
             'cars' => Car::all(),
+            'footerHeight' => $footerHeight,
         ];
 
         $html = view('pdf.voucher', $data)->render();
@@ -688,7 +689,7 @@ class ItineraryGenerator extends Component
             'margin_left' => 15,
             'margin_right' => 15,
             'margin_top' => 25,
-            'margin_bottom' => $footerHeight,
+            'margin_bottom' => 15,
             'margin_header' => 10,
             'margin_footer' => $footerBottom,
             'autoScriptToLang' => true,
