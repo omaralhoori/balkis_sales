@@ -84,7 +84,7 @@
 <body>
 
     <div class="header">
-        <h1 class="title">قسيمة تأكيد الرحلة السياحية</h1>
+        <h1 class="title">تفاصيل البرنامج السياحي</h1>
         <div class="subtitle">السيد/ة: {{ $customerName }}</div>
     </div>
 
