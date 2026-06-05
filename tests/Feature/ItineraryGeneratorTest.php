@@ -344,6 +344,102 @@ test('it renders video url and voucher notes in voucher PDF', function () {
     expect($html)->toContain('تواصلوا معنا عبر بلقيس');
 });
 
+test('it renders voucher PDF with accommodation room type options and hides accommodation type', function () {
+    $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodationHotel = Accommodation::create([
+        'name' => 'شيراتون إسطنبول',
+        'type' => 'فندق',
+        'default_buying_price' => 120,
+        'default_selling_price' => 180,
+        'destination_id' => $destination->id,
+    ]);
+
+    $accommodationVilla = Accommodation::create([
+        'name' => 'فيلا سبانجا الخضراء',
+        'type' => 'فيلا',
+        'default_buying_price' => 300,
+        'default_selling_price' => 450,
+        'destination_id' => $destination->id,
+    ]);
+
+    $dailySlots = [
+        [
+            'date' => '20-10-2026',
+            'day_number' => 1,
+            'accommodation' => [
+                'destination_id' => $destination->id,
+                'accommodation_id' => $accommodationHotel->id,
+                'buying_price' => 120,
+                'note' => '',
+                'room_type' => 'لـ شخصين',
+                'custom_room_type' => '',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ],
+        [
+            'date' => '21-10-2026',
+            'day_number' => 2,
+            'accommodation' => [
+                'destination_id' => $destination->id,
+                'accommodation_id' => $accommodationVilla->id,
+                'buying_price' => 300,
+                'note' => '',
+                'room_type' => 'عدد الأشخاص',
+                'custom_room_type' => 'لـ 6 أشخاص',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ],
+    ];
+
+    $view = view('pdf.voucher', [
+        'customerName' => 'عمر',
+        'adultsCount' => 2,
+        'childrenAges' => [],
+        'destinations' => [$destination->name],
+        'arrivingDate' => '20-10-2026',
+        'arrivingTime' => '',
+        'leavingDate' => '22-10-2026',
+        'leavingTime' => '',
+        'totalDays' => 2,
+        'totalNights' => 2,
+        'dailySlots' => $dailySlots,
+        'voucherNotes' => '',
+        'includeRentalCar' => false,
+        'selectedCarId' => null,
+        'carBuyingPrice' => 0,
+        'totalBuyingPrice' => 420,
+        'finalSellingPrice' => 630,
+        'deposit' => null,
+        'remaining' => 630,
+        'additionalDetails' => '',
+        'accommodations' => Accommodation::all(),
+        'tours' => Tour::all(),
+        'cars' => Car::all(),
+    ]);
+
+    $html = $view->render();
+
+    // The name of the accommodations should be present
+    expect($html)->toContain('شيراتون إسطنبول');
+    expect($html)->toContain('فيلا سبانجا الخضراء');
+
+    // The type (e.g. "(فندق)" or "(فيلا)") should NOT be present
+    expect($html)->not->toContain('(فندق)');
+    expect($html)->not->toContain('(فيلا)');
+
+    // The room/villa detail options should be present
+    expect($html)->toContain('لـ شخصين');
+    expect($html)->toContain('لـ 6 أشخاص');
+});
+
 test('it recalculates daily slots when dates change', function () {
     $user = User::factory()->create();
     actingAs($user);

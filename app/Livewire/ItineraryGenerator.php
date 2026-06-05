@@ -157,6 +157,8 @@ class ItineraryGenerator extends Component
                         'accommodation_id' => $acc['accommodation_id'] ?? '',
                         'buying_price' => $acc['buying_price'] ?? 0,
                         'note' => $acc['note'] ?? '',
+                        'room_type' => $acc['room_type'] ?? '',
+                        'custom_room_type' => $acc['custom_room_type'] ?? '',
                     ];
                 }
             }
@@ -181,6 +183,8 @@ class ItineraryGenerator extends Component
                     'accommodation_id' => '',
                     'buying_price' => 0,
                     'note' => '',
+                    'room_type' => '',
+                    'custom_room_type' => '',
                 ],
                 'tour' => $toursList[$dateStr] ?? [
                     'destination_id' => '',
@@ -212,6 +216,8 @@ class ItineraryGenerator extends Component
                     'accommodation_id' => $acc['accommodation_id'] ?? '',
                     'buying_price' => $acc['buying_price'] ?? 0,
                     'note' => $acc['note'] ?? '',
+                    'room_type' => $acc['room_type'] ?? '',
+                    'custom_room_type' => $acc['custom_room_type'] ?? '',
                 ];
             }
         }
@@ -237,6 +243,8 @@ class ItineraryGenerator extends Component
                     'accommodation_id' => '',
                     'buying_price' => 0,
                     'note' => '',
+                    'room_type' => '',
+                    'custom_room_type' => '',
                 ],
                 'tour' => $toursList[$dateStr] ?? [
                     'destination_id' => '',
@@ -301,6 +309,8 @@ class ItineraryGenerator extends Component
                         'accommodation_id' => $existingSlot['accommodation']['accommodation_id'] ?? '',
                         'buying_price' => $existingSlot['accommodation']['buying_price'] ?? 0,
                         'note' => $existingSlot['accommodation']['note'] ?? '',
+                        'room_type' => $existingSlot['accommodation']['room_type'] ?? '',
+                        'custom_room_type' => $existingSlot['accommodation']['custom_room_type'] ?? '',
                     ],
                     'tour' => [
                         'destination_id' => $existingSlot['tour']['destination_id'] ?? '',
@@ -361,6 +371,8 @@ class ItineraryGenerator extends Component
             $parts = explode('.', $key);
             if (count($parts) === 3) {
                 $dayIndex = (int) $parts[0];
+                $this->dailySlots[$dayIndex]['accommodation']['room_type'] = '';
+                $this->dailySlots[$dayIndex]['accommodation']['custom_room_type'] = '';
                 if ($value) {
                     $acc = Accommodation::find($value);
                     if ($acc) {

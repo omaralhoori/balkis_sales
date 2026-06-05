@@ -307,6 +307,44 @@
                                 </div>
                             </div>
 
+                            @if($selectedAccModel)
+                                @php
+                                    $accType = $selectedAccModel->type;
+                                    $optionsList = [];
+                                    if ($accType === 'فندق') {
+                                        $optionsList = ['لـ شخص واحد', 'لـ شخصين', 'لـ 3 أشخاص', 'أخرى'];
+                                    } elseif ($accType === 'شقق فندقية' || $accType === 'شقة فندقية') {
+                                        $optionsList = ['غرفة وصالة', '2 غرفة وصالة', '3 غرفة وصالة', 'أخرى'];
+                                    } elseif ($accType === 'كوخ') {
+                                        $optionsList = ['لـ شخصين', 'لـ 3 أشخاص', 'لـ 4 أشخاص', 'لـ 5 أشخاص', 'لـ 6 أشخاص', 'لـ 7 أشخاص', 'لـ 8 أشخاص', 'أخرى'];
+                                    } elseif ($accType === 'فيلا') {
+                                        $optionsList = ['طابق واحد', 'طابقين', 'عدد الأشخاص'];
+                                    }
+                                @endphp
+
+                                @if(!empty($optionsList))
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-500 mb-1">تفاصيل نوع الإقامة</label>
+                                            <select wire:model.live="dailySlots.{{ $slotIndex }}.accommodation.room_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                                <option value="">-- اختر خيار الإقامة --</option>
+                                                @foreach($optionsList as $opt)
+                                                    <option value="{{ $opt }}">{{ $opt }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        @if(($slot['accommodation']['room_type'] ?? '') === 'أخرى' || ($slot['accommodation']['room_type'] ?? '') === 'عدد الأشخاص')
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-500 mb-1">
+                                                    {{ ($slot['accommodation']['room_type'] ?? '') === 'عدد الأشخاص' ? 'عدد الأشخاص (كتابة يدوية)' : 'تفاصيل أخرى (كتابة يدوية)' }}
+                                                </label>
+                                                <input type="text" wire:model="dailySlots.{{ $slotIndex }}.accommodation.custom_room_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="{{ ($slot['accommodation']['room_type'] ?? '') === 'عدد الأشخاص' ? 'مثال: 5 أشخاص' : 'اكتب التفاصيل هنا...' }}" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+                            @endif
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">شراء السكن ($)</label>

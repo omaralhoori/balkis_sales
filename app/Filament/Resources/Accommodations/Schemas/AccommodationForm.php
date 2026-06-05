@@ -22,6 +22,7 @@ class AccommodationForm
                     'فندق' => 'فندق',
                     'شقق فندقية' => 'شقق فندقية',
                     'كوخ' => 'كوخ',
+                    'فيلا' => 'فيلا',
                 ])->required(),
                 TextInput::make('default_buying_price')->label('سعر الشراء الافتراضي')->numeric()->required(),
                 TextInput::make('default_selling_price')->label('سعر البيع الافتراضي')->numeric()->required(),

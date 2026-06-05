@@ -134,7 +134,16 @@
                             @if($index < $totalNights && !empty($slot['accommodation']['accommodation_id']))
                                 @php $accModel = $accommodations->find($slot['accommodation']['accommodation_id']); @endphp
                                 @if($accModel)
-                                    <strong>{{ $accModel->name }}</strong> ({{ $accModel->type ?? '' }})
+                                    <strong>{{ $accModel->name }}</strong>
+                                    @if(!empty($slot['accommodation']['room_type']))
+                                        <br><span style="color: #4b5563; font-size: 12px; font-weight: bold;">
+                                            @if($slot['accommodation']['room_type'] === 'أخرى' || $slot['accommodation']['room_type'] === 'عدد الأشخاص')
+                                                {{ $slot['accommodation']['custom_room_type'] ?? '' }}
+                                            @else
+                                                {{ $slot['accommodation']['room_type'] }}
+                                            @endif
+                                        </span>
+                                    @endif
                                     @if(!empty($slot['accommodation']['note']))
                                         <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $slot['accommodation']['note'] }}</span>
                                     @endif
