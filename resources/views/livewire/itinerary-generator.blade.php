@@ -72,7 +72,6 @@
     </select>
     <input type="text" wire:model.lazy="customerWhatsapp" placeholder="رقم الهاتف (اختياري)" class="flex-1 rounded-r-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
 </div>
-</div>
     @error('customerWhatsapp') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
 </div>
                 
@@ -746,4 +745,35 @@
             @endif
         </div>
     </div>
+
+    @if($itineraryId)
+        @php
+            $logs = \App\Models\ItineraryLog::where('itinerary_id', $itineraryId)->with('user')->orderBy('created_at', 'desc')->get();
+        @endphp
+        @if($logs->isNotEmpty())
+            <div class="mt-8 bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100 p-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 pb-4 border-b">سجل تعديلات الطلب</h3>
+                <div class="space-y-6">
+                    @foreach($logs as $log)
+                        <div class="border-r-4 border-blue-500 bg-gray-50 p-4 rounded-xl shadow-sm">
+                            <div class="flex flex-wrap justify-between items-center mb-2">
+                                <span class="font-bold text-blue-900 flex items-center gap-1">
+                                    <svg class="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                    بواسطة: {{ $log->user->name ?? 'غير معروف' }}
+                                </span>
+                                <span class="text-xs text-gray-500 font-medium">
+                                    {{ $log->created_at->format('d-m-Y H:i:s') }}
+                                </span>
+                            </div>
+                            <ul class="list-disc pr-5 text-sm text-gray-700 space-y-1">
+                                @foreach($log->changes as $change)
+                                    <li>{{ $change }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+    @endif
 </div>

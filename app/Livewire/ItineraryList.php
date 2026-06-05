@@ -54,7 +54,7 @@ class ItineraryList extends Component
                 $query->where('user_id', $this->selectedEmployeeId);
             }
         }
-        $itineraries = $query->orderBy('created_at', 'desc')->with('user')->get();
+        $itineraries = $query->orderBy('created_at', 'desc')->with(['user', 'logs.user'])->get();
         $employees = User::orderBy('name')->get();
 
         return view('livewire.itinerary-list', [

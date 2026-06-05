@@ -6,6 +6,7 @@ use App\Models\Accommodation;
 use App\Models\Car;
 use App\Models\Destination;
 use App\Models\Itinerary;
+use App\Models\ItineraryLog;
 use App\Models\Setting;
 use App\Models\Tour;
 use App\Models\User;
@@ -801,4 +802,113 @@ test('it handles previous orders filters and deletion for admin and super admin'
 
     $this->assertDatabaseMissing('itineraries', ['id' => $itinerary2->id]);
     $this->assertDatabaseHas('itineraries', ['id' => $itinerary1->id]);
+});
+
+test('it logs edit changes and displays them to staff', function () {
+    $user = User::factory()->create(['name' => 'الموظف أحمد']);
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => 'فندق',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
+
+    // Create an itinerary
+    $itinerary = Itinerary::create([
+        'user_id' => $user->id,
+        'customer_name' => 'سليم الأول',
+        'customer_whatsapp' => '905391234567',
+        'destinations' => [$destination->id],
+        'arriving_date' => '2026-10-20',
+        'leaving_date' => '2026-10-22',
+        'total_days' => 3,
+        'total_nights' => 2,
+        'data' => [
+            'adultsCount' => 2,
+            'childrenAges' => [],
+            'arrivingTime' => '14:30',
+            'leavingTime' => '12:00',
+            'includeRentalCar' => false,
+            'selectedCarId' => null,
+            'carBuyingPrice' => 0,
+            'finalSellingPrice' => 1000,
+            'dailySlots' => [
+                [
+                    'date' => '20-10-2026',
+                    'day_number' => 1,
+                    'accommodation' => [
+                        'destination_id' => $destination->id,
+                        'accommodation_id' => $accommodation->id,
+                        'buying_price' => 100,
+                        'note' => '',
+                        'room_type' => '',
+                        'custom_room_type' => '',
+                    ],
+                    'tour' => [
+                        'destination_id' => '',
+                        'tour_id' => '',
+                        'buying_price' => 0,
+                    ],
+                ],
+                [
+                    'date' => '21-10-2026',
+                    'day_number' => 2,
+                    'accommodation' => [
+                        'destination_id' => $destination->id,
+                        'accommodation_id' => $accommodation->id,
+                        'buying_price' => 100,
+                        'note' => '',
+                        'room_type' => '',
+                        'custom_room_type' => '',
+                    ],
+                    'tour' => [
+                        'destination_id' => '',
+                        'tour_id' => '',
+                        'buying_price' => 0,
+                    ],
+                ],
+                [
+                    'date' => '22-10-2026',
+                    'day_number' => 3,
+                    'accommodation' => [
+                        'destination_id' => '',
+                        'accommodation_id' => '',
+                        'buying_price' => 0,
+                        'note' => '',
+                        'room_type' => '',
+                        'custom_room_type' => '',
+                    ],
+                    'tour' => [
+                        'destination_id' => '',
+                        'tour_id' => '',
+                        'buying_price' => 0,
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    // Test editing via Livewire component
+    Livewire::test(ItineraryGenerator::class, ['id' => $itinerary->id])
+        ->set('customerName', 'سليم الثاني')
+        ->set('customerWhatsapp', '05399999999')
+        ->set('deposit', 150)
+        ->set('finalSellingPrice', 1200)
+        ->call('saveItinerary')
+        ->assertHasNoErrors();
+
+    // Verify database log was created
+    $this->assertDatabaseHas('itinerary_logs', [
+        'itinerary_id' => $itinerary->id,
+        'user_id' => $user->id,
+    ]);
+
+    $log = ItineraryLog::where('itinerary_id', $itinerary->id)->first();
+    expect($log->changes)->toContain("اسم العميل: من 'سليم الأول' إلى 'سليم الثاني'");
+    expect($log->changes)->toContain("رقم الواتساب: من '905391234567' إلى '905399999999'");
+    expect($log->changes)->toContain("العربون: من '0$' إلى '150$'");
+    expect($log->changes)->toContain("السعر الإجمالي (المبيع): من '1000$' إلى '1200$'");
 });

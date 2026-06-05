@@ -6,6 +6,7 @@ use App\Models\Accommodation;
 use App\Models\Car;
 use App\Models\Destination;
 use App\Models\Itinerary;
+use App\Models\ItineraryLog;
 use App\Models\Setting;
 use App\Models\Tour;
 use Carbon\Carbon;
@@ -546,6 +547,7 @@ class ItineraryGenerator extends Component
                 $query->where('user_id', Auth::id());
             }
             $it = $query->findOrFail($this->itineraryId);
+            $oldModel = $it->toArray();
             $it->update([
                 'customer_name' => $this->customerName,
                 'customer_whatsapp' => $whatsappConsolidated,
@@ -558,6 +560,7 @@ class ItineraryGenerator extends Component
                 'is_pinned' => $this->isPinned,
                 'deposit' => $this->deposit,
             ]);
+            $this->trackAndSaveLogs($it, $oldModel, $it->fresh()->toArray());
             session()->flash('message', 'تم تحديث البرنامج السياحي بنجاح!');
         } else {
             $it = Itinerary::create([
@@ -632,6 +635,7 @@ class ItineraryGenerator extends Component
                 $query->where('user_id', Auth::id());
             }
             $it = $query->findOrFail($this->itineraryId);
+            $oldModel = $it->toArray();
             $it->update([
                 'customer_name' => $this->customerName,
                 'customer_whatsapp' => $whatsappConsolidated,
@@ -644,6 +648,7 @@ class ItineraryGenerator extends Component
                 'is_pinned' => true,
                 'deposit' => $this->deposit,
             ]);
+            $this->trackAndSaveLogs($it, $oldModel, $it->fresh()->toArray());
         } else {
             $it = Itinerary::create([
                 'user_id' => Auth::id(),
@@ -787,5 +792,211 @@ class ItineraryGenerator extends Component
     public function updatedCustomerWhatsapp($value)
     {
         $this->customerWhatsapp = preg_replace('/^0+/', '', $value);
+    }
+
+    protected function trackAndSaveLogs(Itinerary $it, array $oldModel, array $newModel): void
+    {
+        $changes = [];
+
+        // 1. Compare standard fields
+        if (($oldModel['customer_name'] ?? '') !== ($newModel['customer_name'] ?? '')) {
+            $changes[] = "اسم العميل: من '".($oldModel['customer_name'] ?? 'بلا')."' إلى '".($newModel['customer_name'] ?? 'بلا')."'";
+        }
+
+        if (($oldModel['customer_whatsapp'] ?? '') !== ($newModel['customer_whatsapp'] ?? '')) {
+            $changes[] = "رقم الواتساب: من '".($oldModel['customer_whatsapp'] ?? 'بلا')."' إلى '".($newModel['customer_whatsapp'] ?? 'بلا')."'";
+        }
+
+        $oldArr = isset($oldModel['arriving_date']) ? Carbon::parse($oldModel['arriving_date'])->format('d-m-Y') : '';
+        $newArr = isset($newModel['arriving_date']) ? Carbon::parse($newModel['arriving_date'])->format('d-m-Y') : '';
+        if ($oldArr !== $newArr) {
+            $changes[] = "تاريخ الوصول: من '".($oldArr ?: 'بلا')."' إلى '".($newArr ?: 'بلا')."'";
+        }
+
+        $oldLev = isset($oldModel['leaving_date']) ? Carbon::parse($oldModel['leaving_date'])->format('d-m-Y') : '';
+        $newLev = isset($newModel['leaving_date']) ? Carbon::parse($newModel['leaving_date'])->format('d-m-Y') : '';
+        if ($oldLev !== $newLev) {
+            $changes[] = "تاريخ المغادرة: من '".($oldLev ?: 'بلا')."' إلى '".($newLev ?: 'بلا')."'";
+        }
+
+        if (($oldModel['total_days'] ?? 0) != ($newModel['total_days'] ?? 0)) {
+            $changes[] = "عدد الأيام: من '".($oldModel['total_days'] ?? 0)."' إلى '".($newModel['total_days'] ?? 0)."'";
+        }
+
+        if (($oldModel['total_nights'] ?? 0) != ($newModel['total_nights'] ?? 0)) {
+            $changes[] = "عدد الليالي: من '".($oldModel['total_nights'] ?? 0)."' إلى '".($newModel['total_nights'] ?? 0)."'";
+        }
+
+        $oldDep = $oldModel['deposit'] ?? null;
+        $newDep = $newModel['deposit'] ?? null;
+        if ($oldDep != $newDep) {
+            $changes[] = "العربون: من '".($oldDep ?? 0)."$' إلى '".($newDep ?? 0)."$'";
+        }
+
+        if (($oldModel['is_pinned'] ?? false) != ($newModel['is_pinned'] ?? false)) {
+            $statusOld = ($oldModel['is_pinned'] ?? false) ? 'مثبت' : 'مسودة';
+            $statusNew = ($newModel['is_pinned'] ?? false) ? 'مثبت' : 'مسودة';
+            $changes[] = "حالة تثبيت البرنامج: من '{$statusOld}' إلى '{$statusNew}'";
+        }
+
+        // 2. Compare data fields
+        $oldData = $oldModel['data'] ?? [];
+        if (is_string($oldData)) {
+            $oldData = json_decode($oldData, true) ?? [];
+        }
+        $newData = $newModel['data'] ?? [];
+        if (is_string($newData)) {
+            $newData = json_decode($newData, true) ?? [];
+        }
+
+        if (($oldData['adultsCount'] ?? 1) != ($newData['adultsCount'] ?? 1)) {
+            $changes[] = "عدد البالغين: من '".($oldData['adultsCount'] ?? 1)."' إلى '".($newData['adultsCount'] ?? 1)."'";
+        }
+
+        $oldKids = $oldData['childrenAges'] ?? [];
+        $newKids = $newData['childrenAges'] ?? [];
+        if ($oldKids !== $newKids) {
+            $changes[] = "أعمار الأطفال: من '".implode(', ', $oldKids)."' إلى '".implode(', ', $newKids)."'";
+        }
+
+        if (($oldData['arrivingTime'] ?? '') !== ($newData['arrivingTime'] ?? '')) {
+            $changes[] = "وقت الوصول: من '".($oldData['arrivingTime'] ?? 'بلا')."' إلى '".($newData['arrivingTime'] ?? 'بلا')."'";
+        }
+
+        if (($oldData['leavingTime'] ?? '') !== ($newData['leavingTime'] ?? '')) {
+            $changes[] = "وقت المغادرة: من '".($oldData['leavingTime'] ?? 'بلا')."' إلى '".($newData['leavingTime'] ?? 'بلا')."'";
+        }
+
+        if (($oldData['voucherNotes'] ?? '') !== ($newData['voucherNotes'] ?? '')) {
+            $changes[] = 'ملاحظات الفاوچر تم تعديلها';
+        }
+
+        if (($oldData['finalSellingPrice'] ?? 0) != ($newData['finalSellingPrice'] ?? 0)) {
+            $changes[] = "السعر الإجمالي (المبيع): من '".($oldData['finalSellingPrice'] ?? 0)."$' إلى '".($newData['finalSellingPrice'] ?? 0)."$'";
+        }
+
+        if (($oldData['includeRentalCar'] ?? false) != ($newData['includeRentalCar'] ?? false)) {
+            $changes[] = "تضمين سيارة خاصة: من '".(($oldData['includeRentalCar'] ?? false) ? 'نعم' : 'لا')."' إلى '".(($newData['includeRentalCar'] ?? false) ? 'نعم' : 'لا')."'";
+        }
+
+        if (($oldData['excludeCarFirstDay'] ?? false) != ($newData['excludeCarFirstDay'] ?? false)) {
+            $changes[] = "استثناء السيارة في اليوم الأول: من '".(($oldData['excludeCarFirstDay'] ?? false) ? 'نعم' : 'لا')."' إلى '".(($newData['excludeCarFirstDay'] ?? false) ? 'نعم' : 'لا')."'";
+        }
+
+        if (($oldData['excludeCarLastDay'] ?? false) != ($newData['excludeCarLastDay'] ?? false)) {
+            $changes[] = "استثناء السيارة في اليوم الأخير: من '".(($oldData['excludeCarLastDay'] ?? false) ? 'نعم' : 'لا')."' إلى '".(($newData['excludeCarLastDay'] ?? false) ? 'نعم' : 'لا')."'";
+        }
+
+        if (($oldData['selectedCarId'] ?? null) != ($newData['selectedCarId'] ?? null)) {
+            $oldCarName = ($oldData['selectedCarId'] ?? null) ? (Car::find($oldData['selectedCarId'])?->car_type ?? 'غير معروف') : 'لا يوجد';
+            $newCarName = ($newData['selectedCarId'] ?? null) ? (Car::find($newData['selectedCarId'])?->car_type ?? 'غير معروف') : 'لا يوجد';
+            $changes[] = "نوع السيارة: من '{$oldCarName}' إلى '{$newCarName}'";
+        }
+
+        if (($oldData['carBuyingPrice'] ?? 0) != ($newData['carBuyingPrice'] ?? 0)) {
+            $changes[] = "سعر شراء السيارة: من '".($oldData['carBuyingPrice'] ?? 0)."$' إلى '".($newData['carBuyingPrice'] ?? 0)."$'";
+        }
+
+        // 3. Compare daily slots
+        $oldSlots = $oldData['dailySlots'] ?? [];
+        $newSlots = $newData['dailySlots'] ?? [];
+        $maxSlots = max(count($oldSlots), count($newSlots));
+
+        for ($i = 0; $i < $maxSlots; $i++) {
+            $dayNum = $i + 1;
+            $oldSlot = $oldSlots[$i] ?? null;
+            $newSlot = $newSlots[$i] ?? null;
+
+            if ($oldSlot === null && $newSlot !== null) {
+                $changes[] = "تم إضافة اليوم {$dayNum} بتاريخ {$newSlot['date']}";
+                if (! empty($newSlot['accommodation']['accommodation_id'])) {
+                    $accName = Accommodation::find($newSlot['accommodation']['accommodation_id'])?->name ?? 'غير معروف';
+                    $changes[] = "اليوم {$dayNum}: إقامة مضافة: '{$accName}' بسعر '{$newSlot['accommodation']['buying_price']}$'";
+                }
+                if (! empty($newSlot['tour']['tour_id'])) {
+                    $tourName = Tour::find($newSlot['tour']['tour_id'])?->name ?? 'غير معروف';
+                    $changes[] = "اليوم {$dayNum}: رحلة مضافة: '{$tourName}' بسعر '{$newSlot['tour']['buying_price']}$'";
+                }
+            } elseif ($oldSlot !== null && $newSlot === null) {
+                $changes[] = "تم حذف اليوم {$dayNum} بتاريخ {$oldSlot['date']}";
+            } else {
+                // Accommodation Destination
+                $oldAccDest = $oldSlot['accommodation']['destination_id'] ?? '';
+                $newAccDest = $newSlot['accommodation']['destination_id'] ?? '';
+                if ($oldAccDest != $newAccDest) {
+                    $oldDestName = Destination::find($oldAccDest)?->name ?? 'بلا وجهة';
+                    $newDestName = Destination::find($newAccDest)?->name ?? 'بلا وجهة';
+                    $changes[] = "اليوم {$dayNum}: وجهة السكن: من '{$oldDestName}' إلى '{$newDestName}'";
+                }
+
+                // Accommodation Name
+                $oldAccId = $oldSlot['accommodation']['accommodation_id'] ?? '';
+                $newAccId = $newSlot['accommodation']['accommodation_id'] ?? '';
+                if ($oldAccId != $newAccId) {
+                    $oldAccName = Accommodation::find($oldAccId)?->name ?? 'لا يوجد سكن';
+                    $newAccName = Accommodation::find($newAccId)?->name ?? 'لا يوجد سكن';
+                    $changes[] = "اليوم {$dayNum}: السكن: من '{$oldAccName}' إلى '{$newAccName}'";
+                }
+
+                // Accommodation Buying Price
+                $oldAccPrice = $oldSlot['accommodation']['buying_price'] ?? 0;
+                $newAccPrice = $newSlot['accommodation']['buying_price'] ?? 0;
+                if ($oldAccPrice != $newAccPrice) {
+                    $changes[] = "اليوم {$dayNum}: سعر شراء السكن: من '{$oldAccPrice}$' إلى '{$newAccPrice}$'";
+                }
+
+                // Accommodation Room Type
+                $oldRoomType = $oldSlot['accommodation']['room_type'] ?? '';
+                $newRoomType = $newSlot['accommodation']['room_type'] ?? '';
+                $oldCustomRoomType = $oldSlot['accommodation']['custom_room_type'] ?? '';
+                $newCustomRoomType = $newSlot['accommodation']['custom_room_type'] ?? '';
+                $oldRoomText = ($oldRoomType === 'أخرى' || $oldRoomType === 'عدد الأشخاص "يكتب يدويا"') ? ($oldCustomRoomType ?: $oldRoomType) : $oldRoomType;
+                $newRoomText = ($newRoomType === 'أخرى' || $newRoomType === 'عدد الأشخاص "يكتب يدويا"') ? ($newCustomRoomType ?: $newRoomType) : $newRoomType;
+                if ($oldRoomText !== $newRoomText) {
+                    $changes[] = "اليوم {$dayNum}: خيار/نوع الغرفة: من '".($oldRoomText ?: 'بلا')."' إلى '".($newRoomText ?: 'بلا')."'";
+                }
+
+                // Accommodation Note
+                $oldAccNote = $oldSlot['accommodation']['note'] ?? '';
+                $newAccNote = $newSlot['accommodation']['note'] ?? '';
+                if ($oldAccNote !== $newAccNote) {
+                    $changes[] = "اليوم {$dayNum}: ملاحظة السكن تم تعديلها";
+                }
+
+                // Tour Destination
+                $oldTourDest = $oldSlot['tour']['destination_id'] ?? '';
+                $newTourDest = $newSlot['tour']['destination_id'] ?? '';
+                if ($oldTourDest != $newTourDest) {
+                    $oldDestName = Destination::find($oldTourDest)?->name ?? 'بلا وجهة';
+                    $newDestName = Destination::find($newTourDest)?->name ?? 'بلا وجهة';
+                    $changes[] = "اليوم {$dayNum}: وجهة الرحلة: من '{$oldDestName}' إلى '{$newDestName}'";
+                }
+
+                // Tour Name
+                $oldTourId = $oldSlot['tour']['tour_id'] ?? '';
+                $newTourId = $newSlot['tour']['tour_id'] ?? '';
+                if ($oldTourId != $newTourId) {
+                    $oldTourName = Tour::find($oldTourId)?->name ?? 'سيارة بدون سائق / لا يوجد رحلة';
+                    $newTourName = Tour::find($newTourId)?->name ?? 'سيارة بدون سائق / لا يوجد رحلة';
+                    $changes[] = "اليوم {$dayNum}: الرحلة: من '{$oldTourName}' إلى '{$newTourName}'";
+                }
+
+                // Tour Buying Price
+                $oldTourPrice = $oldSlot['tour']['buying_price'] ?? 0;
+                $newTourPrice = $newSlot['tour']['buying_price'] ?? 0;
+                if ($oldTourPrice != $newTourPrice) {
+                    $changes[] = "اليوم {$dayNum}: سعر شراء الرحلة: من '{$oldTourPrice}$' إلى '{$newTourPrice}$'";
+                }
+            }
+        }
+
+        // If there are changes, save them
+        if (! empty($changes)) {
+            ItineraryLog::create([
+                'itinerary_id' => $it->id,
+                'user_id' => Auth::id(),
+                'changes' => $changes,
+            ]);
+        }
     }
 }

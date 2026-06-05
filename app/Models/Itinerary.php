@@ -33,4 +33,9 @@ class Itinerary extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function logs()
+    {
+        return $this->hasMany(ItineraryLog::class)->orderBy('created_at', 'desc');
+    }
 }
