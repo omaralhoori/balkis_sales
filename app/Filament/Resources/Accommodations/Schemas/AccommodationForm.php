@@ -23,7 +23,20 @@ class AccommodationForm
                     'شقق فندقية' => 'شقق فندقية',
                     'كوخ' => 'كوخ',
                     'فيلا' => 'فيلا',
-                ])->required(),
+                ])
+                    ->required()
+                    ->live(),
+                Select::make('stars')
+                    ->label('عدد النجوم')
+                    ->options([
+                        1 => '★ (1 نجمة)',
+                        2 => '★★ (2 نجمة)',
+                        3 => '★★★ (3 نجمات)',
+                        4 => '★★★★ (4 نجمات)',
+                        5 => '★★★★★ (5 نجمات)',
+                    ])
+                    ->nullable()
+                    ->visible(fn (callable $get) => $get('type') === 'فندق'),
                 TextInput::make('default_buying_price')->label('سعر الشراء الافتراضي')->numeric()->required(),
                 TextInput::make('default_selling_price')->label('سعر البيع الافتراضي')->numeric()->required(),
                 TextInput::make('video_url')

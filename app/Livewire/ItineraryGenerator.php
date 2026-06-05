@@ -66,6 +66,14 @@ class ItineraryGenerator extends Component
 
     public ?float $deposit = null;
 
+    public string $accSortBy = 'name';
+
+    public string $accSortOrder = 'asc';
+
+    public string $carSortBy = 'name';
+
+    public string $carSortOrder = 'asc';
+
     public function mount(?int $id = null)
     {
         $id = $id ?? request()->query('id');
@@ -763,8 +771,15 @@ class ItineraryGenerator extends Component
 
     public function render()
     {
+        $carsQuery = Car::query();
+        if ($this->carSortBy === 'price') {
+            $carsQuery->orderBy('default_buying_price', $this->carSortOrder);
+        } else {
+            $carsQuery->orderBy('car_type', $this->carSortOrder);
+        }
+
         return view('livewire.itinerary-generator', [
-            'cars' => Car::all(),
+            'cars' => $carsQuery->get(),
             'dbDestinations' => Destination::all(),
         ])->layout('layouts.app');
     }

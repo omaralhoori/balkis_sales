@@ -440,6 +440,86 @@ test('it renders voucher PDF with accommodation room type options and hides acco
     expect($html)->toContain('لـ 6 أشخاص');
 });
 
+test('it sorts and groups accommodations and cars correctly', function () {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+
+    // Create hotels with different stars and prices
+    $hotel5Star = Accommodation::create([
+        'name' => 'فندق 5 نجوم فاخر',
+        'type' => 'فندق',
+        'stars' => 5,
+        'default_buying_price' => 500,
+        'default_selling_price' => 600,
+        'destination_id' => $destination->id,
+    ]);
+
+    $hotel4Star = Accommodation::create([
+        'name' => 'فندق 4 نجوم جيد',
+        'type' => 'فندق',
+        'stars' => 4,
+        'default_buying_price' => 300,
+        'default_selling_price' => 400,
+        'destination_id' => $destination->id,
+    ]);
+
+    $apartment = Accommodation::create([
+        'name' => 'شقة النور الفندقية',
+        'type' => 'شقق فندقية',
+        'stars' => null,
+        'default_buying_price' => 200,
+        'default_selling_price' => 250,
+        'destination_id' => $destination->id,
+    ]);
+
+    // Create cars
+    $carExpensive = Car::create([
+        'car_type' => 'مرسيدس فيتو',
+        'default_buying_price' => 150,
+        'default_selling_price' => 200,
+    ]);
+
+    $carCheap = Car::create([
+        'car_type' => 'فيات إيجي',
+        'default_buying_price' => 50,
+        'default_selling_price' => 70,
+    ]);
+
+    // Test sorting of cars via Livewire component
+    $component = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'عمر')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026')
+        ->call('nextStep')
+        ->set('includeRentalCar', true)
+        ->set('carSortBy', 'price')
+        ->set('carSortOrder', 'asc');
+
+    $htmlAsc = $component->html();
+    $posFiat = strpos($htmlAsc, 'فيات إيجي');
+    $posMerc = strpos($htmlAsc, 'مرسيدس فيتو');
+    expect($posFiat)->toBeLessThan($posMerc);
+
+    $component->set('carSortOrder', 'desc');
+    $htmlDesc = $component->html();
+    $posFiatDesc = strpos($htmlDesc, 'فيات إيجي');
+    $posMercDesc = strpos($htmlDesc, 'مرسيدس فيتو');
+    expect($posMercDesc)->toBeLessThan($posFiatDesc);
+
+    // Test sorting and grouping visibility in Step 2
+    $componentGroup = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'عمر')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026')
+        ->call('nextStep')
+        ->set('dailySlots.0.accommodation.destination_id', $destination->id)
+        ->assertSee('★★★★★ (5 نجوم)')
+        ->assertSee('★★★★ (4 نجوم)')
+        ->assertSee('إقامات أخرى');
+});
+
 test('it recalculates daily slots when dates change', function () {
     $user = User::factory()->create();
     actingAs($user);

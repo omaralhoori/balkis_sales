@@ -51,12 +51,12 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">بيانات العميل والرحلة</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+                <div class="col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">اسم العميل</label>
                     <input type="text" wire:model="customerName" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="محمد أحمد..." {{ !$this->isEditable ? 'disabled' : '' }}>
                     @error('customerName') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
-                <div class="col-span-2">
+                <div class="col-span-1">
     <label class="block text-sm font-medium text-gray-900 mb-1">واتساب العميل (اختياري)</label>
     <div class="flex">
     <select wire:model="countryCode" class="rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-700 text-sm focus:border-blue-500 focus:ring-blue-500">
@@ -234,6 +234,26 @@
 
             <!-- الأيام والبرنامج اليومي -->
             <div class="space-y-8">
+                <!-- أدوات الفرز والترتيب للسكن -->
+                <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-wrap gap-4 items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+                        </svg>
+                        <span class="text-sm font-semibold text-gray-700">فرز وترتيب خيارات الإقامة والسكن:</span>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <select wire:model.live="accSortBy" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs">
+                            <option value="name">ترتيب أبجدياً (حسب الاسم)</option>
+                            <option value="price">ترتيب حسب السعر (من سعر الشراء)</option>
+                        </select>
+                        <select wire:model.live="accSortOrder" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs">
+                            <option value="asc">تصاعدي (من الأقل للأعلى / أ-ي)</option>
+                            <option value="desc">تنازلي (من الأعلى للأقل / ي-أ)</option>
+                        </select>
+                    </div>
+                </div>
+
                 @foreach($dailySlots as $slotIndex => $slot)
                 <div class="bg-white border-2 border-blue-100 rounded-2xl p-6 shadow-sm relative">
                     <h3 class="text-lg font-bold text-blue-900 mb-6 flex items-center justify-between gap-2 border-b pb-4">
@@ -264,10 +284,43 @@
                             @php
                                 $accDestId = $slot['accommodation']['destination_id'] ?? '';
                                 $filteredAccs = !empty($accDestId) ? \App\Models\Accommodation::where('destination_id', $accDestId)->get() : collect();
-                                $accOptions = $filteredAccs->map(fn($item) => [
-                                    'id' => $item->id,
-                                    'name' => $item->name . ' (' . $item->type . ')',
-                                ])->toArray();
+
+                                // Sort accommodations
+                                if ($accSortBy === 'price') {
+                                    $sortedAccs = $filteredAccs->sortBy('default_buying_price', SORT_REGULAR, $accSortOrder === 'desc');
+                                } else {
+                                    $sortedAccs = $filteredAccs->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE, $accSortOrder === 'desc');
+                                }
+
+                                // Group accommodations by stars (for hotels) or as "Others"
+                                $groupedAccOptions = [];
+                                
+                                // Group hotels by star rating: 5 down to 1
+                                for ($stars = 5; $stars >= 1; $stars--) {
+                                    $items = $sortedAccs->filter(fn($item) => $item->type === 'فندق' && (int)$item->stars === $stars);
+                                    if ($items->isNotEmpty()) {
+                                        $groupedAccOptions[] = [
+                                            'label' => str_repeat('★', $stars) . " ({$stars} نجوم)",
+                                            'items' => $items->map(fn($item) => [
+                                                'id' => $item->id,
+                                                'name' => $item->name . ' ($' . number_format($item->default_buying_price) . ')',
+                                            ])->values()->toArray(),
+                                        ];
+                                    }
+                                }
+                                
+                                // Group all other accommodations (non-hotels, or hotels without stars)
+                                $others = $sortedAccs->filter(fn($item) => $item->type !== 'فندق' || empty($item->stars));
+                                if ($others->isNotEmpty()) {
+                                    $groupedAccOptions[] = [
+                                        'label' => 'إقامات أخرى',
+                                        'items' => $others->map(fn($item) => [
+                                            'id' => $item->id,
+                                            'name' => $item->name . ' (' . ($item->type ?? 'غير محدد') . ') ($' . number_format($item->default_buying_price) . ')',
+                                        ])->values()->toArray(),
+                                    ];
+                                }
+
                                 $selectedAccModel = !empty($slot['accommodation']['accommodation_id']) ? $filteredAccs->firstWhere('id', $slot['accommodation']['accommodation_id']) : null;
                                 $selectedLabel = $selectedAccModel ? $selectedAccModel->name . ' (' . $selectedAccModel->type . ')' : '-- اختر السكن --';
                             @endphp
@@ -276,12 +329,18 @@
                                 <div x-data="{
                                     open: false,
                                     search: '',
-                                    options: {{ json_encode($accOptions) }},
+                                    groups: {{ json_encode($groupedAccOptions, JSON_UNESCAPED_UNICODE) }},
+                                    get filteredGroups() {
+                                        if (!this.search) return this.groups;
+                                        return this.groups.map(g => ({
+                                            label: g.label,
+                                            items: g.items.filter(i => i.name.toLowerCase().includes(this.search.toLowerCase()))
+                                        })).filter(g => g.items.length > 0);
+                                    },
                                     get hasMatches() {
-                                        if (!this.search) return true;
-                                        return this.options.some(o => o.name.toLowerCase().includes(this.search.toLowerCase()));
+                                        return this.filteredGroups.length > 0;
                                     }
-                                }" class="relative" wire:key="acc-select-{{ $slotIndex }}-{{ $slot['accommodation']['accommodation_id'] ?? '' }}-{{ $accDestId }}">
+                                }" class="relative" wire:key="acc-select-{{ $slotIndex }}-{{ $slot['accommodation']['accommodation_id'] ?? '' }}-{{ $accDestId }}-{{ $accSortBy }}-{{ $accSortOrder }}">
                                     <button type="button" @click="open = !open" {{ !$this->isEditable || empty($accDestId) ? 'disabled' : '' }} class="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-right cursor-default focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center text-sm disabled:bg-gray-100 disabled:text-gray-500">
                                         <span>{{ empty($accDestId) ? '-- يرجى اختيار الوجهة أولاً --' : $selectedLabel }}</span>
                                         <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
@@ -291,16 +350,21 @@
                                     
                                     <div x-show="open" @click.outside="open = false" x-cloak class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
                                         <div class="p-2 sticky top-0 bg-white border-b">
-                                            <input type="text" x-model="search" placeholder="ابحث عن فندق..." class="w-full px-3 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            <input type="text" x-model="search" placeholder="ابحث عن سكن..." class="w-full px-3 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
                                         </div>
                                         <div class="max-h-48 overflow-y-auto">
-                                            @foreach($accOptions as $option)
-                                                <div @click="$wire.set('dailySlots.{{ $slotIndex }}.accommodation.accommodation_id', '{{ $option['id'] }}', true); open = false; search = '';" 
-                                                     x-show="!search || '{{ strtolower(addslashes($option['name'])) }}'.includes(search.toLowerCase())"
-                                                     class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-600 hover:text-white text-gray-900 {{ ($slot['accommodation']['accommodation_id'] ?? '') == $option['id'] ? 'bg-blue-50 font-semibold' : '' }}">
-                                                    <span class="block truncate">{{ $option['name'] }}</span>
+                                            <template x-for="group in filteredGroups" :key="group.label">
+                                                <div>
+                                                    <div class="px-3 py-1 text-xs font-bold text-gray-500 bg-gray-100" x-text="group.label"></div>
+                                                    <template x-for="item in group.items" :key="item.id">
+                                                        <div @click="$wire.set('dailySlots.{{ $slotIndex }}.accommodation.accommodation_id', item.id, true); open = false; search = '';" 
+                                                             class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-600 hover:text-white text-gray-900"
+                                                             :class="{'bg-blue-50 font-semibold': '{{ $slot['accommodation']['accommodation_id'] ?? '' }}' == item.id}">
+                                                            <span class="block truncate" x-text="item.name"></span>
+                                                        </div>
+                                                    </template>
                                                 </div>
-                                            @endforeach
+                                            </template>
                                             <div x-show="!hasMatches" class="text-gray-500 text-sm p-3 text-center">لا توجد نتائج</div>
                                         </div>
                                     </div>
@@ -453,12 +517,32 @@
 
                 @if($includeRentalCar)
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-6 rounded-xl border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
+                    <!-- أدوات الفرز والترتيب للسيارات -->
+                    <div class="md:col-span-2 flex flex-wrap gap-4 items-center justify-between border-b pb-4 mb-2">
+                        <span class="text-sm font-semibold text-blue-900 flex items-center gap-1">
+                            <svg class="w-4 h-4 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+                            </svg>
+                            ترتيب خيارات السيارات:
+                        </span>
+                        <div class="flex gap-2">
+                            <select wire:model.live="carSortBy" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                <option value="name">أبجدياً (حسب الاسم)</option>
+                                <option value="price">حسب السعر</option>
+                            </select>
+                            <select wire:model.live="carSortOrder" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                <option value="asc">من الأقل للأعلى</option>
+                                <option value="desc">من الأعلى للأقل</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">نوع السيارة</label>
                         <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
                             <option value="">-- يرجى الاختيار --</option>
                             @foreach($cars as $car)
-                                <option value="{{ $car->id }}">{{ $car->car_type }}</option>
+                                <option value="{{ $car->id }}">{{ $car->car_type }} (${{ number_format($car->default_buying_price) }})</option>
                             @endforeach
                         </select>
                     </div>
