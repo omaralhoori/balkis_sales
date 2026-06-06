@@ -221,7 +221,7 @@
     @endif
 
     <!-- معلومات الدفع والتسعير -->
-    <pagebreak margin-bottom="{{ $footerHeight ?? 35 }}mm" />
+    <pagebreak />
     <div style="page-break-inside: avoid; break-inside: avoid;">
         @if(!empty($deposit) && $deposit > 0)
             <table style="width: 100%; margin-top: 30px; border: 1px solid #10b981; background-color: #ecfdf5; border-collapse: collapse;">
@@ -317,14 +317,11 @@
     </div>
     @endif
 
-    <!-- إظهار الfooter المعرف بالsettings بنهاية اخر صفحة في ملف الvoucher بحيث تكون هناك ثابتة -->
+    <!-- إظهار الfooter المعرف بالsettings بنهاية ملف الvoucher مباشرة -->
     @if(!empty($additionalDetails))
-    <htmlpagefooter name="voucherFooter">
-        <div style="border-top: 1px solid #cf9c56; padding-top: 10px; font-size: 11px; text-align: center; color: #6b7280;">
-            {!! $additionalDetails !!}
-        </div>
-    </htmlpagefooter>
-    <sethtmlpagefooter name="voucherFooter" value="1" />
+    <div style="border-top: 1px solid #cf9c56; padding-top: 10px; margin-top: 30px; font-size: 11px; text-align: center; color: #6b7280; page-break-inside: avoid;">
+        {!! $additionalDetails !!}
+    </div>
     @endif
 
 </body>
