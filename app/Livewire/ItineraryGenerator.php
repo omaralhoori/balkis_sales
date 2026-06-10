@@ -71,6 +71,8 @@ class ItineraryGenerator extends Component
 
     public string $accSortOrder = 'asc';
 
+    public string $accStarsFilter = 'all';
+
     public string $carSortBy = 'name';
 
     public string $carSortOrder = 'asc';

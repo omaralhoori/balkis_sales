@@ -242,6 +242,15 @@
                         <span class="text-sm font-semibold text-gray-700">فرز وترتيب خيارات الإقامة والسكن:</span>
                     </div>
                     <div class="flex flex-wrap gap-3">
+                        <select wire:model.live="accStarsFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs">
+                            <option value="all">كل التصنيفات (عدد النجوم)</option>
+                            <option value="5">★★★★★ (5 نجوم)</option>
+                            <option value="4">★★★★ (4 نجوم)</option>
+                            <option value="3">★★★ (3 نجوم)</option>
+                            <option value="2">★★ (2 نجمة)</option>
+                            <option value="1">★ (1 نجمة)</option>
+                            <option value="others">إقامات أخرى (بدون تصنيف / غير فندق)</option>
+                        </select>
                         <select wire:model.live="accSortBy" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs">
                             <option value="name">ترتيب أبجدياً (حسب الاسم)</option>
                             <option value="price">ترتيب حسب السعر (من سعر الشراء)</option>
@@ -289,6 +298,15 @@
                                     $sortedAccs = $filteredAccs->sortBy('default_buying_price', SORT_REGULAR, $accSortOrder === 'desc');
                                 } else {
                                     $sortedAccs = $filteredAccs->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE, $accSortOrder === 'desc');
+                                }
+
+                                // Filter by stars if applicable
+                                if ($accStarsFilter !== 'all') {
+                                    if ($accStarsFilter === 'others') {
+                                        $sortedAccs = $sortedAccs->filter(fn($item) => $item->type !== 'فندق' || empty($item->stars));
+                                    } else {
+                                        $sortedAccs = $sortedAccs->filter(fn($item) => $item->type === 'فندق' && (int)$item->stars === (int)$accStarsFilter);
+                                    }
                                 }
 
                                 // Group accommodations by stars (for hotels) or as "Others"
@@ -339,7 +357,7 @@
                                     get hasMatches() {
                                         return this.filteredGroups.length > 0;
                                     }
-                                }" class="relative" wire:key="acc-select-{{ $slotIndex }}-{{ $slot['accommodation']['accommodation_id'] ?? '' }}-{{ $accDestId }}-{{ $accSortBy }}-{{ $accSortOrder }}">
+                                }" class="relative" wire:key="acc-select-{{ $slotIndex }}-{{ $slot['accommodation']['accommodation_id'] ?? '' }}-{{ $accDestId }}-{{ $accSortBy }}-{{ $accSortOrder }}-{{ $accStarsFilter }}">
                                     <button type="button" @click="open = !open" {{ !$this->isEditable || empty($accDestId) ? 'disabled' : '' }} class="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-right cursor-default focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center text-sm disabled:bg-gray-100 disabled:text-gray-500">
                                         <span>{{ empty($accDestId) ? '-- يرجى اختيار الوجهة أولاً --' : $selectedLabel }}</span>
                                         <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
