@@ -31,6 +31,14 @@ class AccommodationsTable
                         4 => '★★★★ (4 نجمات)',
                         5 => '★★★★★ (5 نجمات)',
                     ]),
+                SelectFilter::make('type')
+                    ->label('نوع السكن')
+                    ->options([
+                        'فندق' => 'فندق',
+                        'شقق فندقية' => 'شقق فندقية',
+                        'كوخ' => 'كوخ',
+                        'فيلا' => 'فيلا',
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),

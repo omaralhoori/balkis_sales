@@ -37,12 +37,21 @@ class AccommodationForm
                     ])
                     ->nullable()
                     ->visible(fn (callable $get) => $get('type') === 'فندق'),
+                Select::make('apartment_type')
+                    ->label('نوع الشقة')
+                    ->options([
+                        'غرفة وصالة' => 'غرفة وصالة',
+                        'غرفتين وصالة' => 'غرفتين وصالة',
+                        '3 غرف وصالة' => '3 غرف وصالة',
+                        'أخرى' => 'أخرى',
+                    ])
+                    ->nullable()
+                    ->visible(fn (callable $get) => $get('type') === 'شقق فندقية'),
                 TextInput::make('default_buying_price')->label('سعر الشراء الافتراضي')->numeric()->required(),
                 TextInput::make('default_selling_price')->label('سعر البيع الافتراضي')->numeric()->required(),
                 TextInput::make('video_url')
-                    ->label('رابط الفيديو')
-                    ->url()
-                    ->placeholder('https://example.com/video')
+                    ->label('روابط الفيديو (افصل بفاصلة)')
+                    ->placeholder('https://example.com/video1, https://example.com/video2')
                     ->nullable(),
                 FileUpload::make('images')->label('الصور')->multiple()->image()->directory('accommodations'),
             ]);

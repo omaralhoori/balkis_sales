@@ -242,6 +242,13 @@
                         <span class="text-sm font-semibold text-gray-700">فرز وترتيب خيارات الإقامة والسكن:</span>
                     </div>
                     <div class="flex flex-wrap gap-3">
+                        <select wire:model.live="accTypeFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs">
+                            <option value="all">كل أنواع السكن</option>
+                            <option value="فندق">فندق</option>
+                            <option value="شقق فندقية">شقق فندقية</option>
+                            <option value="كوخ">كوخ</option>
+                            <option value="فيلا">فيلا</option>
+                        </select>
                         <select wire:model.live="accStarsFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs">
                             <option value="all">كل التصنيفات (عدد النجوم)</option>
                             <option value="5">★★★★★ (5 نجوم)</option>
@@ -298,6 +305,11 @@
                                     $sortedAccs = $filteredAccs->sortBy('default_buying_price', SORT_REGULAR, $accSortOrder === 'desc');
                                 } else {
                                     $sortedAccs = $filteredAccs->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE, $accSortOrder === 'desc');
+                                }
+
+                                // Filter by type if applicable
+                                if ($accTypeFilter !== 'all') {
+                                    $sortedAccs = $sortedAccs->filter(fn($item) => $item->type === $accTypeFilter);
                                 }
 
                                 // Filter by stars if applicable
@@ -357,7 +369,7 @@
                                     get hasMatches() {
                                         return this.filteredGroups.length > 0;
                                     }
-                                }" class="relative" wire:key="acc-select-{{ $slotIndex }}-{{ $slot['accommodation']['accommodation_id'] ?? '' }}-{{ $accDestId }}-{{ $accSortBy }}-{{ $accSortOrder }}-{{ $accStarsFilter }}">
+                                }" class="relative" wire:key="acc-select-{{ $slotIndex }}-{{ $slot['accommodation']['accommodation_id'] ?? '' }}-{{ $accDestId }}-{{ $accSortBy }}-{{ $accSortOrder }}-{{ $accStarsFilter }}-{{ $accTypeFilter }}">
                                     <button type="button" @click="open = !open" {{ !$this->isEditable || empty($accDestId) ? 'disabled' : '' }} class="w-full bg-white border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-right cursor-default focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center text-sm disabled:bg-gray-100 disabled:text-gray-500">
                                         <span>{{ empty($accDestId) ? '-- يرجى اختيار الوجهة أولاً --' : $selectedLabel }}</span>
                                         <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">

@@ -428,13 +428,13 @@ test('it renders voucher PDF with accommodation room type options and hides acco
 
     $html = $view->render();
 
-    // The name of the accommodations should be present
-    expect($html)->toContain('شيراتون إسطنبول');
-    expect($html)->toContain('فيلا سبانجا الخضراء');
+    // The name of the accommodations should NOT be present
+    expect($html)->not->toContain('شيراتون إسطنبول');
+    expect($html)->not->toContain('فيلا سبانجا الخضراء');
 
-    // The type (e.g. "(فندق)" or "(فيلا)") should NOT be present
-    expect($html)->not->toContain('(فندق)');
-    expect($html)->not->toContain('(فيلا)');
+    // The type should be present
+    expect($html)->toContain('فندق');
+    expect($html)->toContain('فيلا');
 
     // The room/villa detail options should be present
     expect($html)->toContain('لـ شخصين');

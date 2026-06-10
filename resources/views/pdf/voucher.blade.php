@@ -134,7 +134,18 @@
                             @if($index < $totalNights && !empty($slot['accommodation']['accommodation_id']))
                                 @php $accModel = $accommodations->find($slot['accommodation']['accommodation_id']); @endphp
                                 @if($accModel)
-                                    <strong>{{ $accModel->name }}</strong>
+                                    @if($accModel->type === 'فندق')
+                                        <strong>فندق @if($accModel->stars) ({{ $accModel->stars }} نجوم) @endif</strong>
+                                    @elseif($accModel->type === 'شقق فندقية' || $accModel->type === 'شقة فندقية')
+                                        <strong>شقة فندقية @if($accModel->apartment_type) ({{ $accModel->apartment_type }}) @endif</strong>
+                                    @elseif($accModel->type === 'كوخ')
+                                        <strong>كوخ</strong>
+                                    @elseif($accModel->type === 'فيلا')
+                                        <strong>فيلا</strong>
+                                    @else
+                                        <strong>{{ $accModel->type }}</strong>
+                                    @endif
+
                                     @if(!empty($slot['accommodation']['room_type']))
                                         <br><span style="color: #4b5563; font-size: 12px; font-weight: bold;">
                                             @if($slot['accommodation']['room_type'] === 'أخرى' || $slot['accommodation']['room_type'] === 'عدد الأشخاص')
@@ -148,7 +159,12 @@
                                         <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $slot['accommodation']['note'] }}</span>
                                     @endif
                                     @if(!empty($accModel->video_url))
-                                        <br><span style="font-size:12px;">رابط الفيديو: <a href="{{ $accModel->video_url }}" style="color:#2563eb; text-decoration:underline;" target="_blank">{{ $accModel->video_url }}</a></span>
+                                        @foreach(explode(',', $accModel->video_url) as $url)
+                                            @php $url = trim($url); @endphp
+                                            @if(!empty($url))
+                                                <br><span style="font-size:12px;">رابط الفيديو: <a href="{{ $url }}" style="color:#2563eb; text-decoration:underline;" target="_blank">{{ $url }}</a></span>
+                                            @endif
+                                        @endforeach
                                     @endif
                                 @else
                                     <span style="color: #999;">غير محدد</span>
@@ -256,7 +272,19 @@
             if($index < $totalNights && !empty($slot['accommodation']['accommodation_id'])) {
                 $accModel = $accommodations->find($slot['accommodation']['accommodation_id']);
                 if ($accModel && !empty($accModel->images)) {
-                    $accImages[$accModel->name] = $accModel->images;
+                    $label = '';
+                    if ($accModel->type === 'فندق') {
+                        $label = 'صور الفندق ' . ($accModel->stars ? "($accModel->stars نجوم)" : '');
+                    } elseif ($accModel->type === 'شقق فندقية' || $accModel->type === 'شقة فندقية') {
+                        $label = 'صور الشقة الفندقية' . ($accModel->apartment_type ? " ($accModel->apartment_type)" : '');
+                    } elseif ($accModel->type === 'كوخ') {
+                        $label = 'صور الكوخ';
+                    } elseif ($accModel->type === 'فيلا') {
+                        $label = 'صور الفيلا';
+                    } else {
+                        $label = 'صور الإقامة (' . ($accModel->type ?? 'غير محدد') . ')';
+                    }
+                    $accImages[$label] = $accModel->images;
                     $hasImages = true;
                 }
             }
