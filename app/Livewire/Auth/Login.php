@@ -2,14 +2,16 @@
 
 namespace App\Livewire\Auth;
 
-use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class Login extends Component
 {
     public $email = '';
+
     public $password = '';
-    public $remember = false;
+
+    public $remember = true;
 
     public function login()
     {
@@ -20,6 +22,7 @@ class Login extends Component
 
         if (Auth::attempt($credentials, $this->remember)) {
             session()->regenerate();
+
             return redirect()->intended('/');
         }
 
