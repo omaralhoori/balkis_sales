@@ -28,7 +28,6 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->homeUrl('/')
             ->navigationItems([
                 NavigationItem::make('الصفحة الرئيسية')
                     ->url('/')
