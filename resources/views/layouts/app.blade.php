@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
        body { 
-            font-family: 'Cairo', sans-serif; 
+            font-family:  sans-serif; 
             background-image: url('/bg-balkis.jpg') !important; 
             background-size: 100% auto !important; 
             background-position: center top !important; 
