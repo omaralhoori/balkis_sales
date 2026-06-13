@@ -912,3 +912,182 @@ test('it logs edit changes and displays them to staff', function () {
     expect($log->changes)->toContain("العربون: من '0$' إلى '150$'");
     expect($log->changes)->toContain("السعر الإجمالي (المبيع): من '1000$' إلى '1200$'");
 });
+
+test('it downloads voucher with customer name and last 5 digits of whatsapp if defined', function () {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => 'فندق',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
+
+    // 1. With WhatsApp defined: should have customerName-last5.pdf
+    $responseWithWhatsapp = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد أحمد')
+        ->set('customerWhatsapp', '05391234567')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026') // 2 nights
+        ->call('nextStep');
+
+    for ($i = 0; $i < 2; $i++) {
+        $responseWithWhatsapp->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $responseWithWhatsapp->call('nextStep')
+        ->set('finalSellingPrice', 1000)
+        ->call('downloadPdf')
+        ->assertFileDownloaded('محمد أحمد-34567.pdf');
+
+    // 2. Without WhatsApp defined: should have customerName.pdf
+    $responseNoWhatsapp = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'محمد أحمد')
+        ->set('customerWhatsapp', '')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026') // 2 nights
+        ->call('nextStep');
+
+    for ($i = 0; $i < 2; $i++) {
+        $responseNoWhatsapp->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $responseNoWhatsapp->call('nextStep')
+        ->set('finalSellingPrice', 1000)
+        ->call('downloadPdf')
+        ->assertFileDownloaded('محمد أحمد.pdf');
+});
+
+test('it groups and labels voucher PDF images chronologically', function () {
+    $destination = Destination::create(['name' => 'أنطاليا']);
+
+    $acc1 = Accommodation::create([
+        'name' => 'فندق 1',
+        'type' => 'فندق',
+        'destination_id' => $destination->id,
+        'images' => ['acc1_1.jpg', 'acc1_2.jpg'],
+    ]);
+
+    $acc2 = Accommodation::create([
+        'name' => 'فندق 2',
+        'type' => 'كوخ',
+        'destination_id' => $destination->id,
+        'images' => ['acc2_1.jpg'],
+    ]);
+
+    $car = Car::create([
+        'car_type' => 'مرسيدس فيتو',
+        'images' => ['car_1.jpg'],
+    ]);
+
+    $dailySlots = [
+        [
+            'date' => '20-10-2026',
+            'day_number' => 1,
+            'accommodation' => [
+                'destination_id' => $destination->id,
+                'accommodation_id' => $acc1->id,
+                'buying_price' => 100,
+                'note' => '',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ],
+        // Second night stays in same acc1 (should not duplicate)
+        [
+            'date' => '21-10-2026',
+            'day_number' => 2,
+            'accommodation' => [
+                'destination_id' => $destination->id,
+                'accommodation_id' => $acc1->id,
+                'buying_price' => 100,
+                'note' => '',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ],
+        // Third night stays in acc2 (different acc)
+        [
+            'date' => '22-10-2026',
+            'day_number' => 3,
+            'accommodation' => [
+                'destination_id' => $destination->id,
+                'accommodation_id' => $acc2->id,
+                'buying_price' => 100,
+                'note' => '',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ],
+        // Day 4 (checkout, no accommodation)
+        [
+            'date' => '23-10-2026',
+            'day_number' => 4,
+            'accommodation' => [
+                'destination_id' => '',
+                'accommodation_id' => '',
+                'buying_price' => 0,
+                'note' => '',
+            ],
+            'tour' => [
+                'destination_id' => '',
+                'tour_id' => '',
+                'buying_price' => 0,
+            ],
+        ],
+    ];
+
+    $view = view('pdf.voucher', [
+        'customerName' => 'عمر',
+        'customerWhatsapp' => '05391234567',
+        'adultsCount' => 2,
+        'childrenAges' => [],
+        'destinations' => [$destination->name],
+        'arrivingDate' => '20-10-2026',
+        'arrivingTime' => '',
+        'leavingDate' => '23-10-2026',
+        'leavingTime' => '',
+        'totalDays' => 4,
+        'totalNights' => 3,
+        'dailySlots' => $dailySlots,
+        'voucherNotes' => '',
+        'includeRentalCar' => true,
+        'excludeCarFirstDay' => false,
+        'excludeCarLastDay' => false,
+        'selectedCarId' => $car->id,
+        'carBuyingPrice' => 50,
+        'totalBuyingPrice' => 350,
+        'finalSellingPrice' => 500,
+        'deposit' => null,
+        'remaining' => 500,
+        'additionalDetails' => '',
+        'accommodations' => Accommodation::all(),
+        'tours' => Tour::all(),
+        'cars' => Car::all(),
+    ]);
+
+    $html = $view->render();
+
+    // The unique accommodations should be labeled chronologically
+    expect($html)->toContain('فندق 1');
+    expect($html)->toContain('فندق 2');
+
+    // We should not have 'فندق 3' as the first accommodation was duplicated but should be unique
+    expect($html)->not->toContain('فندق 3');
+
+    // The car should be labeled "السيارة"
+    expect($html)->toContain('السيارة');
+});

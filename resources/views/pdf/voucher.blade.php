@@ -268,22 +268,19 @@
     @php
         $hasImages = false;
         $accImages = [];
+        $seenAccIds = [];
+        $accommodationCount = 0;
         foreach($dailySlots as $index => $slot) {
             if($index < $totalNights && !empty($slot['accommodation']['accommodation_id'])) {
-                $accModel = $accommodations->find($slot['accommodation']['accommodation_id']);
+                $accId = $slot['accommodation']['accommodation_id'];
+                if (in_array($accId, $seenAccIds)) {
+                    continue;
+                }
+                $seenAccIds[] = $accId;
+                $accModel = $accommodations->find($accId);
                 if ($accModel && !empty($accModel->images)) {
-                    $label = '';
-                    if ($accModel->type === 'فندق') {
-                        $label = 'صور الفندق ' . ($accModel->stars ? "($accModel->stars نجوم)" : '');
-                    } elseif ($accModel->type === 'شقق فندقية' || $accModel->type === 'شقة فندقية') {
-                        $label = 'صور الشقة الفندقية' . ($accModel->apartment_type ? " ($accModel->apartment_type)" : '');
-                    } elseif ($accModel->type === 'كوخ') {
-                        $label = 'صور الكوخ';
-                    } elseif ($accModel->type === 'فيلا') {
-                        $label = 'صور الفيلا';
-                    } else {
-                        $label = 'صور الإقامة (' . ($accModel->type ?? 'غير محدد') . ')';
-                    }
+                    $accommodationCount++;
+                    $label = 'فندق ' . $accommodationCount;
                     $accImages[$label] = $accModel->images;
                     $hasImages = true;
                 }
@@ -293,7 +290,7 @@
         if($includeRentalCar && !empty($selectedCarId)) {
             $carModel = $cars->find($selectedCarId);
             if ($carModel && !empty($carModel->images)) {
-                $carImages[$carModel->car_type] = $carModel->images;
+                $carImages['السيارة'] = $carModel->images;
                 $hasImages = true;
             }
         }

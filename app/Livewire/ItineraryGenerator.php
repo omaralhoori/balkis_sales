@@ -738,9 +738,18 @@ class ItineraryGenerator extends Component
 
         $pdfContent = $mpdf->Output('', 'S');
 
+        $filename = $this->customerName;
+        if (! empty($this->customerWhatsapp)) {
+            $cleanPhone = preg_replace('/\D/', '', $this->customerWhatsapp);
+            $last5 = substr($cleanPhone, -5);
+            if (strlen($last5) > 0) {
+                $filename .= '-'.$last5;
+            }
+        }
+
         return response()->streamDownload(function () use ($pdfContent) {
             echo $pdfContent;
-        }, 'voucher-'.$this->customerName.'.pdf', [
+        }, $filename.'.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
