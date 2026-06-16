@@ -675,6 +675,10 @@ class ItineraryGenerator extends Component
 
     public function downloadPdf()
     {
+        if ($this->isEditable) {
+            $this->saveItinerary();
+        }
+
         $settings = Setting::pluck('value', 'key')->toArray();
         $additionalDetails = $settings['voucher_additional_details'] ?? '';
         $footerBottom = isset($settings['voucher_footer_bottom']) ? (float) $settings['voucher_footer_bottom'] : 10;
@@ -756,6 +760,10 @@ class ItineraryGenerator extends Component
 
     public function sendWhatsApp()
     {
+        if ($this->isEditable) {
+            $this->saveItinerary();
+        }
+
         $dests = Destination::whereIn('id', $this->destinations)->pluck('name')->implode('، ');
 
         $text = "*مرحباً {$this->customerName}*\n";

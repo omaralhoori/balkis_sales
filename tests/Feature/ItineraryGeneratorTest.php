@@ -1108,3 +1108,64 @@ test('it groups and labels voucher PDF images chronologically', function () {
     // The car should be labeled "السيارة"
     expect($html)->toContain('السيارة');
 });
+
+test('it saves the itinerary as a draft when downloadPdf or sendWhatsApp is called', function () {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $destination = Destination::create(['name' => 'إسطنبول']);
+    $accommodation = Accommodation::create([
+        'name' => 'فندق النخبة',
+        'type' => '5 نجوم',
+        'default_buying_price' => 100,
+        'destination_id' => $destination->id,
+    ]);
+
+    // Test downloadPdf saves draft
+    $component1 = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'زبون PDF')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026') // 2 nights
+        ->call('nextStep');
+
+    for ($i = 0; $i < 2; $i++) {
+        $component1->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $component1->call('nextStep')
+        ->set('finalSellingPrice', 1000);
+
+    expect(Itinerary::where('customer_name', 'زبون PDF')->exists())->toBeFalse();
+
+    $component1->call('downloadPdf')
+        ->assertFileDownloaded('زبون PDF.pdf');
+
+    expect(Itinerary::where('customer_name', 'زبون PDF')->exists())->toBeTrue();
+    $itinerary1 = Itinerary::where('customer_name', 'زبون PDF')->first();
+    expect($itinerary1->is_pinned)->toBeFalse();
+
+    // Test sendWhatsApp saves draft
+    $component2 = Livewire::test(ItineraryGenerator::class)
+        ->set('customerName', 'زبون واتساب')
+        ->set('arrivingDate', '20-10-2026')
+        ->set('leavingDate', '22-10-2026') // 2 nights
+        ->call('nextStep');
+
+    for ($i = 0; $i < 2; $i++) {
+        $component2->set("dailySlots.{$i}.accommodation.destination_id", $destination->id)
+            ->set("dailySlots.{$i}.accommodation.accommodation_id", $accommodation->id);
+    }
+
+    $component2->call('nextStep')
+        ->set('finalSellingPrice', 1200);
+
+    expect(Itinerary::where('customer_name', 'زبون واتساب')->exists())->toBeFalse();
+
+    $component2->call('sendWhatsApp')
+        ->assertDispatched('open-url');
+
+    expect(Itinerary::where('customer_name', 'زبون واتساب')->exists())->toBeTrue();
+    $itinerary2 = Itinerary::where('customer_name', 'زبون واتساب')->first();
+    expect($itinerary2->is_pinned)->toBeFalse();
+});
