@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Itinerary extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'user_id',
         'customer_name',
@@ -18,6 +21,7 @@ class Itinerary extends Model
         'is_pinned',
         'deposit',
         'customer_whatsapp',
+        'deleted_by',
     ];
 
     protected $casts = [
@@ -32,6 +36,11 @@ class Itinerary extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function deletedBy()
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function logs()

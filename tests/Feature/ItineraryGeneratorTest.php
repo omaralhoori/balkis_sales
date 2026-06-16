@@ -800,8 +800,25 @@ test('it handles previous orders filters and deletion for admin and super admin'
         ->call('deleteItinerary', $itinerary2->id)
         ->assertHasNoErrors();
 
-    $this->assertDatabaseMissing('itineraries', ['id' => $itinerary2->id]);
+    $this->assertSoftDeleted('itineraries', ['id' => $itinerary2->id]);
+    $this->assertDatabaseHas('itineraries', [
+        'id' => $itinerary2->id,
+        'deleted_by' => $admin->id,
+    ]);
     $this->assertDatabaseHas('itineraries', ['id' => $itinerary1->id]);
+
+    // 4. Verify that the soft-deleted itinerary does not appear in ItineraryList for admins
+    Livewire::test(ItineraryList::class)
+        ->assertViewHas('itineraries', function ($its) use ($itinerary1) {
+            return $its->count() === 1 && $its->first()->id === $itinerary1->id;
+        });
+
+    // 5. Verify that the soft-deleted itinerary does not appear in ItineraryList for employee2
+    actingAs($employee2);
+    Livewire::test(ItineraryList::class)
+        ->assertViewHas('itineraries', function ($its) {
+            return $its->count() === 0;
+        });
 });
 
 test('it logs edit changes and displays them to staff', function () {

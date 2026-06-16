@@ -28,6 +28,7 @@ class ItineraryList extends Component
         }
 
         $itinerary = Itinerary::findOrFail($id);
+        $itinerary->update(['deleted_by' => Auth::id()]);
         $itinerary->delete();
 
         session()->flash('message', 'تم حذف الطلب بنجاح.');
