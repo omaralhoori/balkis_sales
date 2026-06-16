@@ -587,9 +587,15 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">شراء الرحلة ($)</label>
-                                <input type="number" step="0.01" wire:model.live="dailySlots.{{ $slotIndex }}.tour.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-50" {{ !$this->isEditable || empty($slot['tour']['tour_id']) ? 'disabled' : '' }}>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">شراء الرحلة ($)</label>
+                                    <input type="number" step="0.01" wire:model.live="dailySlots.{{ $slotIndex }}.tour.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-50" {{ !$this->isEditable || empty($slot['tour']['tour_id']) ? 'disabled' : '' }}>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">ملاحظة</label>
+                                    <input type="text" wire:model="dailySlots.{{ $slotIndex }}.tour.note" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="اختياري" {{ !$this->isEditable || empty($slot['tour']['tour_id']) ? 'disabled' : '' }}>
+                                </div>
                             </div>
                         </div>
                         @endif

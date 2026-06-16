@@ -132,18 +132,21 @@
                         </td>
                         <td style="vertical-align: top;">
                             @if($index < $totalNights && !empty($slot['accommodation']['accommodation_id']))
-                                @php $accModel = $accommodations->find($slot['accommodation']['accommodation_id']); @endphp
+                                @php 
+                                    $accModel = $accommodations->find($slot['accommodation']['accommodation_id']); 
+                                    $destName = $accModel ? $accModel->destination?->name : null;
+                                @endphp
                                 @if($accModel)
                                     @if($accModel->type === 'فندق')
-                                        <strong>فندق @if($accModel->stars) ({{ $accModel->stars }} نجوم) @endif</strong>
+                                        <strong>فندق @if($accModel->stars) {{ $accModel->stars }} نجوم @endif @if($destName) - {{ $destName }} @endif</strong>
                                     @elseif($accModel->type === 'شقق فندقية' || $accModel->type === 'شقة فندقية')
-                                        <strong>شقة فندقية @if($accModel->apartment_type) ({{ $accModel->apartment_type }}) @endif</strong>
+                                        <strong>شقة فندقية @if($accModel->apartment_type) ({{ $accModel->apartment_type }}) @endif @if($destName) - {{ $destName }} @endif</strong>
                                     @elseif($accModel->type === 'كوخ')
-                                        <strong>كوخ</strong>
+                                        <strong>كوخ @if($destName) - {{ $destName }} @endif</strong>
                                     @elseif($accModel->type === 'فيلا')
-                                        <strong>فيلا</strong>
+                                        <strong>فيلا @if($destName) - {{ $destName }} @endif</strong>
                                     @else
-                                        <strong>{{ $accModel->type }}</strong>
+                                        <strong>{{ $accModel->type }} @if($destName) - {{ $destName }} @endif</strong>
                                     @endif
 
                                     @if(!empty($slot['accommodation']['room_type']))
@@ -187,6 +190,9 @@
                                         @endif
                                         @if(!empty($tourModel->external_link))
                                             <br><a href="{{ $tourModel->external_link }}" style="color:#cf9c56; font-size:12px; text-decoration:underline;">مزيد من التفاصيل</a>
+                                        @endif
+                                        @if(!empty($slot['tour']['note']))
+                                            <br><span style="color:#666; font-size:12px;">ملاحظة: {{ $slot['tour']['note'] }}</span>
                                         @endif
                                     @else
                                         <span style="color: #999;">يوم حر / لم يتم تحديد جولة</span>

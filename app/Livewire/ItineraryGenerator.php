@@ -242,6 +242,7 @@ class ItineraryGenerator extends Component
                 'destination_id' => $tourModel ? $tourModel->destination_id : '',
                 'tour_id' => $tour['tour_id'] ?? '',
                 'buying_price' => $tour['buying_price'] ?? 0,
+                'note' => $tour['note'] ?? '',
             ];
         }
 
@@ -263,6 +264,7 @@ class ItineraryGenerator extends Component
                     'destination_id' => '',
                     'tour_id' => '',
                     'buying_price' => 0,
+                    'note' => '',
                 ],
             ];
         }
@@ -329,6 +331,7 @@ class ItineraryGenerator extends Component
                         'destination_id' => $existingSlot['tour']['destination_id'] ?? '',
                         'tour_id' => $existingSlot['tour']['tour_id'] ?? '',
                         'buying_price' => $existingSlot['tour']['buying_price'] ?? 0,
+                        'note' => $existingSlot['tour']['note'] ?? '',
                     ],
                 ];
             }
@@ -444,6 +447,7 @@ class ItineraryGenerator extends Component
                 'dailySlots.*.tour.destination_id' => 'nullable',
                 'dailySlots.*.tour.tour_id' => 'nullable',
                 'dailySlots.*.tour.buying_price' => 'required|numeric|min:0',
+                'dailySlots.*.tour.note' => 'nullable|string',
             ];
 
             // Make accommodation required for all nights (the first $totalNights slots)
@@ -1008,6 +1012,13 @@ class ItineraryGenerator extends Component
                 $newTourPrice = $newSlot['tour']['buying_price'] ?? 0;
                 if ($oldTourPrice != $newTourPrice) {
                     $changes[] = "اليوم {$dayNum}: سعر شراء الرحلة: من '{$oldTourPrice}$' إلى '{$newTourPrice}$'";
+                }
+
+                // Tour Note
+                $oldTourNote = $oldSlot['tour']['note'] ?? '';
+                $newTourNote = $newSlot['tour']['note'] ?? '';
+                if ($oldTourNote !== $newTourNote) {
+                    $changes[] = "اليوم {$dayNum}: ملاحظة الرحلة تم تعديلها";
                 }
             }
         }
