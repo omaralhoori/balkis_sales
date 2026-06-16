@@ -360,7 +360,7 @@
                                 <label class="block text-xs font-medium text-gray-500 mb-1">الوجهة (المدينة للسكن)</label>
                                 <select wire:model.live="dailySlots.{{ $slotIndex }}.accommodation.destination_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" {{ !$this->isEditable ? 'disabled' : '' }}>
                                     <option value="">-- اختر الوجهة للسكن --</option>
-                                    @foreach($dbDestinations as $dest)
+                                    @foreach($accommodationDestinations as $dest)
                                         <option value="{{ $dest->id }}">{{ $dest->name }}</option>
                                     @endforeach
                                 </select>
@@ -535,7 +535,7 @@
                                 <label class="block text-xs font-medium text-gray-500 mb-1">الوجهة (المدينة للرحلة)</label>
                                 <select wire:model.live="dailySlots.{{ $slotIndex }}.tour.destination_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" {{ !$this->isEditable ? 'disabled' : '' }}>
                                     <option value="">-- اختر الوجهة للرحلة --</option>
-                                    @foreach($dbDestinations as $dest)
+                                    @foreach($tourDestinations as $dest)
                                         <option value="{{ $dest->id }}">{{ $dest->name }}</option>
                                     @endforeach
                                 </select>

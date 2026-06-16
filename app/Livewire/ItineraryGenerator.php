@@ -806,7 +806,8 @@ class ItineraryGenerator extends Component
 
         return view('livewire.itinerary-generator', [
             'cars' => $carsQuery->get(),
-            'dbDestinations' => Destination::all(),
+            'accommodationDestinations' => Destination::whereIn('type', ['accommodation', 'both'])->get(),
+            'tourDestinations' => Destination::whereIn('type', ['tour', 'both'])->get(),
         ])->layout('layouts.app');
     }
 

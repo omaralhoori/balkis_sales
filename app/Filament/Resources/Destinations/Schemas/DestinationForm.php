@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\Destinations\Schemas;
 
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Schema;
 
 class DestinationForm
 {
@@ -12,6 +13,15 @@ class DestinationForm
         return $schema
             ->components([
                 TextInput::make('name')->label('اسم الوجهة')->required(),
+                Select::make('type')
+                    ->label('نوع الوجهة')
+                    ->options([
+                        'accommodation' => 'إقامة',
+                        'tour' => 'رحلات',
+                        'both' => 'كلاهما',
+                    ])
+                    ->default('both')
+                    ->required(),
             ]);
     }
 }
