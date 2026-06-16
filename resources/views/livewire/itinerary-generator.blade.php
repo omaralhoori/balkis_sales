@@ -543,7 +543,7 @@
 
                             @php
                                 $tourDestId = $slot['tour']['destination_id'] ?? '';
-                                $filteredTours = !empty($tourDestId) ? \App\Models\Tour::where('destination_id', $tourDestId)->get() : collect();
+                                $filteredTours = !empty($tourDestId) ? \App\Models\Tour::where('destination_id', $tourDestId)->orderBy('sort_order', 'asc')->orderBy('name', 'asc')->get() : collect();
                                 $tourOptions = $filteredTours->map(fn($item) => [
                                     'id' => $item->id,
                                     'name' => $item->name . ' (' . $item->type . ')',

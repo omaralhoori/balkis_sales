@@ -14,12 +14,15 @@ class ToursTable
     {
         return $table
             ->columns([
+                TextColumn::make('sort_order')->label('الترتيب')->sortable(),
                 TextColumn::make('name')->label('اسم الجولة')->searchable(),
                 TextColumn::make('destination.name')->label('الوجهة')->searchable(),
                 TextColumn::make('type')->label('النوع')->searchable(),
                 TextColumn::make('default_buying_price')->label('سعر الشراء الافتراضي')->money('usd'),
                 TextColumn::make('default_selling_price')->label('سعر البيع الافتراضي')->money('usd'),
             ])
+            ->reorderable('sort_order')
+            ->defaultSort('sort_order', 'asc')
             ->filters([
                 //
             ])

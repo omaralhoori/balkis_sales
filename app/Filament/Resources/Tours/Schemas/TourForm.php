@@ -22,6 +22,11 @@ class TourForm
                     'خاص VIP' => 'خاص VIP',
                     'مجموعة Group' => 'مجموعة Group',
                 ])->default('خاص VIP')->required(),
+                TextInput::make('sort_order')
+                    ->label('الترتيب')
+                    ->numeric()
+                    ->default(0)
+                    ->required(),
                 Textarea::make('short_description')->label('وصف قصير')->columnSpanFull(),
                 TextInput::make('external_link')->label('رابط خارجي')->url(),
                 TextInput::make('default_buying_price')->label('سعر الشراء الافتراضي')->numeric()->default(0)->required(),
