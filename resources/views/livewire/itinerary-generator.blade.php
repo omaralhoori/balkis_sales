@@ -231,6 +231,76 @@
                 </div>
             @endif
 
+            <!-- السيارة والبرنامج السياحي -->
+            <div class="mb-8 border-b pb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 pb-4 border-b">السيارة والبرنامج السياحي</h3>
+                
+                <label class="flex items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 {{ $this->isEditable ? 'cursor-pointer hover:bg-gray-100' : 'opacity-60' }} transition-colors">
+                    <div class="relative">
+                        <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only" {{ !$this->isEditable ? 'disabled' : '' }}>
+                        <div class="block bg-gray-300 w-14 h-8 rounded-full transition-colors {{ $includeRentalCar ? 'bg-green-500' : '' }}"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ $includeRentalCar ? 'translate-x-6' : '' }}"></div>
+                    </div>
+                    <div class="mr-4 text-gray-700 font-medium">
+                        العميل يريد سيارة سياحية بدون سائق؟ (إذا تم التحديد، سيلغى اختيار الرحلات اليومية)
+                    </div>
+                </label>
+
+                @if($includeRentalCar)
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-6 rounded-xl border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
+                    <!-- أدوات الفرز والترتيب للسيارات -->
+                    <div class="md:col-span-2 flex flex-wrap gap-4 items-center justify-between border-b pb-4 mb-2">
+                        <span class="text-sm font-semibold text-blue-900 flex items-center gap-1">
+                            <svg class="w-4 h-4 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+                            </svg>
+                            ترتيب خيارات السيارات:
+                        </span>
+                        <div class="flex gap-2">
+                            <select wire:model.live="carSortBy" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                <option value="name">أبجدياً (حسب الاسم)</option>
+                                <option value="price">حسب السعر</option>
+                            </select>
+                            <select wire:model.live="carSortOrder" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs" {{ !$this->isEditable ? 'disabled' : '' }}>
+                                <option value="asc">من الأقل للأعلى</option>
+                                <option value="desc">من الأعلى للأقل</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">نوع السيارة</label>
+                        <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
+                            <option value="">-- يرجى الاختيار --</option>
+                            @foreach($cars as $car)
+                                <option value="{{ $car->id }}">{{ $car->car_type }} (${{ number_format($car->default_buying_price) }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
+                        <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600" {{ !$this->isEditable ? 'disabled' : '' }}>
+                    </div>
+
+                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <label class="flex items-center cursor-pointer select-none">
+                            <input type="checkbox" wire:model.live="excludeCarFirstDay" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
+                            <span class="mr-2 text-sm text-gray-700 font-medium">عدم إضافة السيارة لليوم الأول</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer select-none">
+                            <input type="checkbox" wire:model.live="excludeCarLastDay" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
+                            <span class="mr-2 text-sm text-gray-700 font-medium">عدم إضافة السيارة لليوم الأخير</span>
+                        </label>
+                    </div>
+                    
+                    <div class="md:col-span-2 text-sm text-blue-700">
+                        * سيتم حساب تكلفة السيارة لعدد <strong>{{ max(0, $totalDays - ($excludeCarFirstDay ? 1 : 0) - ($excludeCarLastDay ? 1 : 0)) }} أيام</strong> الإجمالية.
+                    </div>
+                </div>
+                @endif
+            </div>
+
             <!-- الأيام والبرنامج اليومي -->
             <div class="space-y-8">
                 <!-- أدوات الفرز والترتيب للسكن -->
@@ -529,74 +599,6 @@
                 @endforeach
             </div>
 
-            <!-- السيارة والبرنامج السياحي -->
-            <div class="mt-8 border-t pt-8">
-                <h3 class="text-xl font-bold text-gray-800 mb-6 pb-4 border-b">السيارة والبرنامج السياحي</h3>
-                
-                <label class="flex items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 {{ $this->isEditable ? 'cursor-pointer hover:bg-gray-100' : 'opacity-60' }} transition-colors">
-                    <div class="relative">
-                        <input type="checkbox" wire:model.live="includeRentalCar" class="sr-only" {{ !$this->isEditable ? 'disabled' : '' }}>
-                        <div class="block bg-gray-300 w-14 h-8 rounded-full transition-colors {{ $includeRentalCar ? 'bg-blue-500' : '' }}"></div>
-                        <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform {{ $includeRentalCar ? 'translate-x-6' : '' }}"></div>
-                    </div>
-                    <div class="mr-4 text-gray-700 font-medium">
-                        العميل يريد سيارة سياحية بدون سائق؟ (إذا تم التحديد، سيلغى اختيار الرحلات اليومية)
-                    </div>
-                </label>
-
-                @if($includeRentalCar)
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-6 rounded-xl border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
-                    <!-- أدوات الفرز والترتيب للسيارات -->
-                    <div class="md:col-span-2 flex flex-wrap gap-4 items-center justify-between border-b pb-4 mb-2">
-                        <span class="text-sm font-semibold text-blue-900 flex items-center gap-1">
-                            <svg class="w-4 h-4 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
-                            </svg>
-                            ترتيب خيارات السيارات:
-                        </span>
-                        <div class="flex gap-2">
-                            <select wire:model.live="carSortBy" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs" {{ !$this->isEditable ? 'disabled' : '' }}>
-                                <option value="name">أبجدياً (حسب الاسم)</option>
-                                <option value="price">حسب السعر</option>
-                            </select>
-                            <select wire:model.live="carSortOrder" class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs" {{ !$this->isEditable ? 'disabled' : '' }}>
-                                <option value="asc">من الأقل للأعلى</option>
-                                <option value="desc">من الأعلى للأقل</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">نوع السيارة</label>
-                        <select wire:model.live="selectedCarId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
-                            <option value="">-- يرجى الاختيار --</option>
-                            @foreach($cars as $car)
-                                <option value="{{ $car->id }}">{{ $car->car_type }} (${{ number_format($car->default_buying_price) }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
-                        <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600" {{ !$this->isEditable ? 'disabled' : '' }}>
-                    </div>
-
-                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                        <label class="flex items-center cursor-pointer select-none">
-                            <input type="checkbox" wire:model.live="excludeCarFirstDay" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
-                            <span class="mr-2 text-sm text-gray-700 font-medium">عدم إضافة السيارة لليوم الأول</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer select-none">
-                            <input type="checkbox" wire:model.live="excludeCarLastDay" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" {{ !$this->isEditable ? 'disabled' : '' }}>
-                            <span class="mr-2 text-sm text-gray-700 font-medium">عدم إضافة السيارة لليوم الأخير</span>
-                        </label>
-                    </div>
-                    
-                    <div class="md:col-span-2 text-sm text-blue-700">
-                        * سيتم حساب تكلفة السيارة لعدد <strong>{{ max(0, $totalDays - ($excludeCarFirstDay ? 1 : 0) - ($excludeCarLastDay ? 1 : 0)) }} أيام</strong> الإجمالية.
-                    </div>
-                </div>
-                @endif
             </div>
 
             <!-- ملاحظة اسفل صفحة تفاصيل الحجز تظهر اسفل ملف voucher -->
@@ -723,7 +725,7 @@
                 </div>
             @endif
 
-            <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
                 @if(!$isPinned)
                     <button wire:click="saveItinerary" wire:loading.attr="disabled" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
@@ -736,12 +738,6 @@
                     </button>
                 @endif
 
-                @if($this->isEditable)
-                    <button wire:click="pinItinerary" wire:loading.attr="disabled" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" {{ $isPinned ? 'disabled' : '' }}>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                        {{ $isPinned ? 'تم التثبيت' : 'تثبيت البرنامج' }}
-                    </button>
-                @endif
                 <button wire:click="downloadPdf" wire:loading.attr="disabled" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     تحميل PDF
@@ -751,6 +747,15 @@
                     إرسال WhatsApp
                 </button>
             </div>
+
+            @if($this->isEditable)
+                <div class="w-full mb-6">
+                    <button wire:click="pinItinerary" wire:loading.attr="disabled" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-emerald-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" {{ $isPinned ? 'disabled' : '' }}>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        {{ $isPinned ? 'تم التثبيت' : 'تثبيت البرنامج' }}
+                    </button>
+                </div>
+            @endif
         </div>
         @endif
 
