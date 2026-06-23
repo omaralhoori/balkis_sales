@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\FlushesReferenceDataCache;
 use Database\Factories\DestinationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Destination extends Model
 {
-    /** @use HasFactory<DestinationFactory> */
+    use FlushesReferenceDataCache;
+
     protected $guarded = [];
 
     public function accommodations()

@@ -9,6 +9,7 @@ use App\Models\Itinerary;
 use App\Models\ItineraryLog;
 use App\Models\Setting;
 use App\Models\Tour;
+use App\Support\ReferenceData;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -355,13 +356,15 @@ class ItineraryGenerator extends Component
 
     public function updatedDailySlots($value, $key)
     {
+        $reference = ReferenceData::get();
+
         if (str_contains($key, '.accommodation.destination_id')) {
             $parts = explode('.', $key);
             $dayIndex = (int) $parts[0];
             $destId = $value;
             $accId = $this->dailySlots[$dayIndex]['accommodation']['accommodation_id'] ?? '';
             if ($accId) {
-                $acc = Accommodation::find($accId);
+                $acc = $reference['accommodationsById']->get($accId);
                 if (! $acc || $acc->destination_id != $destId) {
                     $this->dailySlots[$dayIndex]['accommodation']['accommodation_id'] = '';
                     $this->dailySlots[$dayIndex]['accommodation']['buying_price'] = 0;
@@ -375,7 +378,7 @@ class ItineraryGenerator extends Component
             $destId = $value;
             $tourId = $this->dailySlots[$dayIndex]['tour']['tour_id'] ?? '';
             if ($tourId) {
-                $tour = Tour::find($tourId);
+                $tour = $reference['toursById']->get($tourId);
                 if (! $tour || $tour->destination_id != $destId) {
                     $this->dailySlots[$dayIndex]['tour']['tour_id'] = '';
                     $this->dailySlots[$dayIndex]['tour']['buying_price'] = 0;
@@ -390,7 +393,7 @@ class ItineraryGenerator extends Component
                 $this->dailySlots[$dayIndex]['accommodation']['room_type'] = '';
                 $this->dailySlots[$dayIndex]['accommodation']['custom_room_type'] = '';
                 if ($value) {
-                    $acc = Accommodation::find($value);
+                    $acc = $reference['accommodationsById']->get($value);
                     if ($acc) {
                         $this->dailySlots[$dayIndex]['accommodation']['buying_price'] = $acc->default_buying_price;
                     }
@@ -403,7 +406,7 @@ class ItineraryGenerator extends Component
             if (count($parts) === 3) {
                 $dayIndex = (int) $parts[0];
                 if ($value) {
-                    $tour = Tour::find($value);
+                    $tour = $reference['toursById']->get($value);
                     if ($tour) {
                         $this->dailySlots[$dayIndex]['tour']['buying_price'] = $tour->default_buying_price;
                     }
@@ -415,7 +418,7 @@ class ItineraryGenerator extends Component
     public function updatedSelectedCarId($value)
     {
         if ($value) {
-            $car = Car::find($value);
+            $car = ReferenceData::get()['carsById']->get($value);
             if ($car) {
                 $this->carBuyingPrice = $car->default_buying_price;
             }
@@ -712,9 +715,9 @@ class ItineraryGenerator extends Component
             'deposit' => $this->deposit,
             'remaining' => $this->finalSellingPrice - ($this->deposit ?? 0),
             'additionalDetails' => $additionalDetails,
-            'accommodations' => Accommodation::all(),
-            'tours' => Tour::all(),
-            'cars' => Car::all(),
+            'accommodations' => ReferenceData::get()['accommodations'],
+            'tours' => ReferenceData::get()['tours'],
+            'cars' => ReferenceData::get()['cars'],
             'footerHeight' => $footerHeight,
         ];
 
@@ -801,17 +804,23 @@ class ItineraryGenerator extends Component
 
     public function render()
     {
-        $carsQuery = Car::query();
+        $reference = ReferenceData::get();
+
+        $descending = $this->carSortOrder === 'desc';
         if ($this->carSortBy === 'price') {
-            $carsQuery->orderBy('default_buying_price', $this->carSortOrder);
+            $cars = $reference['cars']->sortBy('default_buying_price', SORT_REGULAR, $descending)->values();
         } else {
-            $carsQuery->orderBy('car_type', $this->carSortOrder);
+            $cars = $reference['cars']->sortBy('car_type', SORT_NATURAL | SORT_FLAG_CASE, $descending)->values();
         }
 
         return view('livewire.itinerary-generator', [
-            'cars' => $carsQuery->get(),
-            'accommodationDestinations' => Destination::whereIn('type', ['accommodation', 'both'])->get(),
-            'tourDestinations' => Destination::whereIn('type', ['tour', 'both'])->get(),
+            'cars' => $cars,
+            'accommodationDestinations' => $reference['accommodationDestinations'],
+            'tourDestinations' => $reference['tourDestinations'],
+            'accommodationsByDestination' => $reference['accommodationsByDestination'],
+            'toursByDestination' => $reference['toursByDestination'],
+            'accommodationsById' => $reference['accommodationsById'],
+            'toursById' => $reference['toursById'],
         ])->layout('layouts.app');
     }
 

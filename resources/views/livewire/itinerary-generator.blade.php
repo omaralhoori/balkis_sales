@@ -280,7 +280,7 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">سعر الشراء لليوم ($)</label>
-                        <input type="number" step="0.01" wire:model.live="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600" {{ !$this->isEditable ? 'disabled' : '' }}>
+                        <input type="number" step="0.01" wire:model.blur="carBuyingPrice" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-100 text-gray-600" {{ !$this->isEditable ? 'disabled' : '' }}>
                     </div>
 
                     <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
@@ -368,7 +368,7 @@
 
                             @php
                                 $accDestId = $slot['accommodation']['destination_id'] ?? '';
-                                $filteredAccs = !empty($accDestId) ? \App\Models\Accommodation::where('destination_id', $accDestId)->get() : collect();
+                                $filteredAccs = !empty($accDestId) ? ($accommodationsByDestination->get($accDestId) ?? collect()) : collect();
 
                                 // Sort accommodations
                                 if ($accSortBy === 'price') {
@@ -511,7 +511,7 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">شراء السكن ($)</label>
-                                    <input type="number" step="0.01" wire:model.live="dailySlots.{{ $slotIndex }}.accommodation.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-50" {{ !$this->isEditable || empty($slot['accommodation']['accommodation_id']) ? 'disabled' : '' }}>
+                                    <input type="number" step="0.01" wire:model.blur="dailySlots.{{ $slotIndex }}.accommodation.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-50" {{ !$this->isEditable || empty($slot['accommodation']['accommodation_id']) ? 'disabled' : '' }}>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">ملاحظة</label>
@@ -543,7 +543,7 @@
 
                             @php
                                 $tourDestId = $slot['tour']['destination_id'] ?? '';
-                                $filteredTours = !empty($tourDestId) ? \App\Models\Tour::where('destination_id', $tourDestId)->orderBy('sort_order', 'asc')->orderBy('name', 'asc')->get() : collect();
+                                $filteredTours = !empty($tourDestId) ? ($toursByDestination->get($tourDestId) ?? collect()) : collect();
                                 $tourOptions = $filteredTours->map(fn($item) => [
                                     'id' => $item->id,
                                     'name' => $item->name . ' (' . $item->type . ')',
@@ -590,7 +590,7 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">شراء الرحلة ($)</label>
-                                    <input type="number" step="0.01" wire:model.live="dailySlots.{{ $slotIndex }}.tour.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-50" {{ !$this->isEditable || empty($slot['tour']['tour_id']) ? 'disabled' : '' }}>
+                                    <input type="number" step="0.01" wire:model.blur="dailySlots.{{ $slotIndex }}.tour.buying_price" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm bg-gray-50" {{ !$this->isEditable || empty($slot['tour']['tour_id']) ? 'disabled' : '' }}>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">ملاحظة</label>
@@ -634,7 +634,7 @@
                     @foreach($dailySlots as $index => $slot)
                         @if($index < $totalNights && !empty($slot['accommodation']['accommodation_id']))
                             @php 
-                                $accModel = \App\Models\Accommodation::find($slot['accommodation']['accommodation_id']);
+                                $accModel = $accommodationsById->get($slot['accommodation']['accommodation_id']);
                                 $accPrice = $slot['accommodation']['buying_price'] ?? 0;
                             @endphp
                             <div class="flex justify-between text-sm text-gray-500">
@@ -648,7 +648,7 @@
                         @endphp
                         @if($hasNoCarOnThisDay && !empty($slot['tour']['tour_id']))
                             @php 
-                                $tourModel = \App\Models\Tour::find($slot['tour']['tour_id']);
+                                $tourModel = $toursById->get($slot['tour']['tour_id']);
                                 $tourPrice = $slot['tour']['buying_price'] ?? 0;
                             @endphp
                             <div class="flex justify-between text-sm text-gray-500">
