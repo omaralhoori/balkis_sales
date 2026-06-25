@@ -273,30 +273,58 @@
     <!-- صور مرفقة -->
     @php
         $hasImages = false;
-        $accImages = [];
-        $seenAccIds = [];
-        $accommodationCount = 0;
+
+        // Group the day numbers each accommodation is used on, in order of first appearance
+        $accDays = [];
+        $accOrder = [];
         foreach($dailySlots as $index => $slot) {
             if($index < $totalNights && !empty($slot['accommodation']['accommodation_id'])) {
                 $accId = $slot['accommodation']['accommodation_id'];
-                if (in_array($accId, $seenAccIds)) {
-                    continue;
+                if (!isset($accDays[$accId])) {
+                    $accDays[$accId] = [];
+                    $accOrder[] = $accId;
                 }
-                $seenAccIds[] = $accId;
-                $accModel = $accommodations->find($accId);
-                if ($accModel && !empty($accModel->images)) {
-                    $accommodationCount++;
-                    $label = 'فندق ' . $accommodationCount;
-                    $accImages[$label] = $accModel->images;
-                    $hasImages = true;
-                }
+                $accDays[$accId][] = $index + 1;
             }
         }
+
+        $accImages = [];
+        foreach($accOrder as $accId) {
+            $accModel = $accommodations->find($accId);
+            if ($accModel && !empty($accModel->images)) {
+                // Type label (consistent with the daily program table)
+                if ($accModel->type === 'فندق') {
+                    $typeLabel = 'فندق' . ($accModel->stars ? ' ' . $accModel->stars . ' نجوم' : '');
+                } elseif ($accModel->type === 'شقق فندقية' || $accModel->type === 'شقة فندقية') {
+                    $typeLabel = 'شقة فندقية';
+                } else {
+                    $typeLabel = $accModel->type;
+                }
+
+                $destName = $accModel->destination?->name;
+
+                // Day(s) label: "اليوم 1" / "اليوم 3 و 4" / "الأيام 3، 4، 5"
+                $days = $accDays[$accId];
+                if (count($days) === 1) {
+                    $dayLabel = 'اليوم ' . $days[0];
+                } elseif (count($days) === 2) {
+                    $dayLabel = 'اليوم ' . $days[0] . ' و ' . $days[1];
+                } else {
+                    $dayLabel = 'الأيام ' . implode('، ', $days);
+                }
+
+                $label = $dayLabel . ': ' . $typeLabel . ($destName ? ' - ' . $destName : '');
+
+                $accImages[] = ['label' => $label, 'images' => $accModel->images];
+                $hasImages = true;
+            }
+        }
+
         $carImages = [];
         if($includeRentalCar && !empty($selectedCarId)) {
             $carModel = $cars->find($selectedCarId);
             if ($carModel && !empty($carModel->images)) {
-                $carImages['السيارة'] = $carModel->images;
+                $carImages[] = ['label' => 'السيارة' . ($carModel->car_type ? ' - ' . $carModel->car_type : ''), 'images' => $carModel->images];
                 $hasImages = true;
             }
         }
@@ -306,10 +334,10 @@
     <div class="section mt-5" style="margin-top: 25px">
         <div class="section-title">صور مرفقة</div>
         
-        @foreach($accImages as $name => $images)
-            <h3 style="color: #cf9c56; margin-bottom: 10px;">{{ $name }}</h3>
+        @foreach($accImages as $acc)
+            <h3 style="color: #cf9c56; margin-bottom: 10px;">{{ $acc['label'] }}</h3>
             <div style="text-align: center; margin-bottom: 20px;">
-                @foreach($images as $img)
+                @foreach($acc['images'] as $img)
                     @php
                         $imagePath = storage_path('app/public/' . $img);
                         if (!file_exists($imagePath)) {
@@ -326,10 +354,10 @@
             </div>
         @endforeach
 
-        @foreach($carImages as $name => $images)
-            <h3 style="color: #cf9c56; margin-bottom: 10px;">{{ $name }}</h3>
+        @foreach($carImages as $car)
+            <h3 style="color: #cf9c56; margin-bottom: 10px;">{{ $car['label'] }}</h3>
             <div style="text-align: center; margin-bottom: 20px;">
-                @foreach($images as $img)
+                @foreach($car['images'] as $img)
                     @php
                         $imagePath = storage_path('app/public/' . $img);
                         if (!file_exists($imagePath)) {

@@ -983,14 +983,14 @@ test('it groups and labels voucher PDF images chronologically', function () {
     $destination = Destination::create(['name' => 'أنطاليا']);
 
     $acc1 = Accommodation::create([
-        'name' => 'فندق 1',
+        'name' => 'منتجع الساحل',
         'type' => 'فندق',
         'destination_id' => $destination->id,
         'images' => ['acc1_1.jpg', 'acc1_2.jpg'],
     ]);
 
     $acc2 = Accommodation::create([
-        'name' => 'فندق 2',
+        'name' => 'كوخ الغابة',
         'type' => 'كوخ',
         'destination_id' => $destination->id,
         'images' => ['acc2_1.jpg'],
@@ -1098,15 +1098,20 @@ test('it groups and labels voucher PDF images chronologically', function () {
 
     $html = $view->render();
 
-    // The unique accommodations should be labeled chronologically
-    expect($html)->toContain('فندق 1');
-    expect($html)->toContain('فندق 2');
+    // Images are labeled by the actual type and city, grouping the days each
+    // accommodation is used on (acc1 spans nights 1 & 2, acc2 is night 3).
+    expect($html)->toContain('اليوم 1 و 2: فندق - أنطاليا');
+    expect($html)->toContain('اليوم 3: كوخ - أنطاليا');
 
-    // We should not have 'فندق 3' as the first accommodation was duplicated but should be unique
-    expect($html)->not->toContain('فندق 3');
+    // The old generic numbering ("فندق 1", "فندق 2"...) must no longer be used.
+    expect($html)->not->toContain('فندق 1');
+    expect($html)->not->toContain('فندق 2');
 
-    // The car should be labeled "السيارة"
-    expect($html)->toContain('السيارة');
+    // The checkout day (4) has no accommodation, so no image group for it.
+    expect($html)->not->toContain('اليوم 4:');
+
+    // The car should be labeled with its type.
+    expect($html)->toContain('السيارة - مرسيدس فيتو');
 });
 
 test('it saves the itinerary as a draft when downloadPdf or sendWhatsApp is called', function () {
